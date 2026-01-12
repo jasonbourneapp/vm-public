@@ -82,10 +82,10 @@ jobs:
           # Nix создает симлинк 'result', указывающий в /nix/store.
           # GitHub Actions не умеет загружать файлы напрямую из /nix/store через симлинк,
           # поэтому нужно физически скопировать файл.
-          cp -rL result/* artifacts/
+          cp -rL result/*.qcow2 artifacts/
 
           # (Опционально) Переименуем для удобства, если там лежит один файл
-          # mv artifacts/nixos.qcow2 artifacts/nixos-${{ matrix.arch }}.qcow2
+          mv artifacts/nixos.qcow2 artifacts/nixos-${{ matrix.arch }}.qcow2
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
