@@ -183,8 +183,26 @@ run-arm:
 # git commit -m "Initial commit" --author="jsonbourne <jsonbourne@example.com>"
 
 export-arm-pkgs:
-  ssh -p 2223 user@localhost "nix-store --export \$(nix-store -qR /nix/store/00ss6y3np52nlh37pzc824gq99cp9zkr-mutter-49.2)" | nix-store --import
-  attic push remote:system /nix/store/00ss6y3np52nlh37pzc824gq99cp9zkr-mutter-49.2
+    #!/usr/bin/env bash
+    # Собираем массив из переменных окружения (подставляются Just-ом)
+    pkgs=(
+        "{{MUTTER_PATH_ARM}}"
+        "{{GNOME_SHELL_PATH_ARM}}"
+        "{{JASONBOURNE_PATH_ARM}}"
+    )
 
-  ssh -p 2223 user@localhost "nix-store --export \$(nix-store -qR /nix/store/b2phzf0a186ry7frvsgf04kxz4cyhy0k-gnome-shell-49.2)" | nix-store --import
-  attic push remote:system /nix/store/b2phzf0a186ry7frvsgf04kxz4cyhy0k-gnome-shell-49.2
+    for pkg in "${pkgs[@]}"; do
+        # Пропускаем пустые строки, если переменной нет
+        [[ -z "$pkg" ]] && continue
+
+        echo "---------------------------------------------------"
+        echo "Processing: $pkg"
+
+        # 1. Экспорт с удаленной машины -> Импорт локально
+        # \$(...) экранирован, чтобы выполниться внутри SSH
+        # $pkg подставляется локальным bash
+        ssh -p 2223 user@localhost "nix-store --export \$(nix-store -qR $pkg)" | nix-store --import
+
+        # 2. Пуш в бинарный кэш
+        attic push remote:system "$pkg"
+    done
