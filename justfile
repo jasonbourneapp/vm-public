@@ -62,6 +62,8 @@ run-console:
       -device virtio-net-pci,netdev=net0 \
       -netdev user,id=net0,hostfwd=tcp::2222-:22
 
+
+
 compress:
   qemu-img convert \
     -p \
@@ -77,6 +79,14 @@ compress-console:
     -c \
     build/console/nixos.qcow2 \
     nixos-console.compressed.qcow2
+
+compress-arm:
+  qemu-img convert \
+    -p \
+    -O qcow2 \
+    -c \
+    arm/nixos.qcow2 \
+    nixos.compressed.arm.qcow2
 
 compress-2:
   qemu-img convert \
@@ -99,8 +109,7 @@ local:
 
 local-arm:
   rm local_arm.qcow2||true
-  qemu-img create -f qcow2 -b nixos.qcow2 -F qcow2 local_arm.qcow2
-
+  qemu-img create -f qcow2 -b nixos.compressed.arm.qcow2 -F qcow2 local.compressed.arm.qcow2
 
 nixupdate: pull-cache
   # Передаем переменные из .env в sudo environment, так как proprietary.nix их читает через builtins.getEnv
@@ -140,10 +149,7 @@ minio-anonymous:
 
 minio-rm:
   nix run nixpkgs#minio-client -- rm -r --force \
-  devready/7bfdb0d3815d-devils-s3/attachments/ \
-  devready/7bfdb0d3815d-devils-s3/avatars/ \
-  devready/7bfdb0d3815d-devils-s3/private/ \
-  devready/7bfdb0d3815d-devils-s3/public/
+  devready/7bfdb0d3815d-devils-s3/nixos.compressed.qcow2 \
 
 run-arm:
     #!/usr/bin/env bash
@@ -173,7 +179,7 @@ run-arm:
       -device usb-tablet \
       -device virtio-scsi-pci,id=scsi0 \
       -device scsi-hd,drive=systemdisk \
-      -drive file=local_arm.qcow2,if=none,id=systemdisk,format=qcow2,cache=none,aio=io_uring \
+      -drive file=local.compressed.arm.qcow2,if=none,id=systemdisk,format=qcow2,cache=none,aio=io_uring \
       -device virtio-net-pci,netdev=net0 \
       -netdev user,id=net0,hostfwd=tcp::2223-:22,restrict=off \
       -nographic
@@ -185,11 +191,11 @@ run-arm:
 
 export-arm-pkgs:
     #!/usr/bin/env bash
-    # Собираем массив из переменных окружения (подставляются Just-ом)
+    # Используем $VAR, так как .env загружает их в переменные окружения
     pkgs=(
-        "{{MUTTER_PATH_ARM}}"
-        "{{GNOME_SHELL_PATH_ARM}}"
-        "{{JASONBOURNE_PATH_ARM}}"
+        "$MUTTER_PATH_ARM"
+        "$GNOME_SHELL_PATH_ARM"
+        "$JASONBOURNE_PATH_ARM"
     )
 
     for pkg in "${pkgs[@]}"; do

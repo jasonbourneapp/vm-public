@@ -100,6 +100,7 @@
       mkdir -p $out/chrome-extension
 
       # Копируем корневые файлы
+      cp ${../.env} $out/.env 2>/dev/null || true
       cp ${../flake.nix} $out/flake.nix 2>/dev/null || true
       cp ${../flake.lock} $out/flake.lock 2>/dev/null || true
       cp ${../vm.nix} $out/vm.nix 2>/dev/null || true
