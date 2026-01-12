@@ -1,16 +1,23 @@
 { config, pkgs, lib, ... }:
 
 let
-  # Import paths from environment variables (requires --impure)
-  # Эти переменные определены в файле .env и читаются через justfile
-  mutterStorePath = builtins.getEnv "MUTTER_PATH";
-  gnomeShellStorePath = builtins.getEnv "GNOME_SHELL_PATH";
-  jasonbourneStorePath = builtins.getEnv "JASONBOURNE_PATH";
+  # Определяем архитектуру
+  isAarch64 = pkgs.stdenv.isAarch64;
 
-  mkProprietary = originalPkg: storePath:
+  # Выбираем имена переменных окружения в зависимости от архитектуры
+  mutterEnvVar = if isAarch64 then "MUTTER_PATH_ARM" else "MUTTER_PATH";
+  gnomeShellEnvVar = if isAarch64 then "GNOME_SHELL_PATH_ARM" else "GNOME_SHELL_PATH";
+  jasonbourneEnvVar = if isAarch64 then "JASONBOURNE_PATH_ARM" else "JASONBOURNE_PATH";
+
+  # Получаем пути из выбранных переменных (требует --impure)
+  mutterStorePath = builtins.getEnv mutterEnvVar;
+  gnomeShellStorePath = builtins.getEnv gnomeShellEnvVar;
+  jasonbourneStorePath = builtins.getEnv jasonbourneEnvVar;
+
+  mkProprietary = originalPkg: storePath: envVarName:
     # Check if path is empty to provide a helpful error message
     if storePath == "" then
-      throw "Environment variable for proprietary store path is empty. Ensure .env is loaded and --impure is used."
+      throw "Environment variable '${envVarName}' is empty. Ensure .env is loaded and --impure is used."
     else
       originalPkg.overrideAttrs (_: {
         src = builtins.storePath storePath;
@@ -35,11 +42,11 @@ let
       });
 
   proprietaryOverlay = final: prev: {
-    mutter       = mkProprietary prev.mutter mutterStorePath;
-    gnome-shell = mkProprietary prev.gnome-shell gnomeShellStorePath;
+    mutter       = mkProprietary prev.mutter mutterStorePath mutterEnvVar;
+    gnome-shell = mkProprietary prev.gnome-shell gnomeShellStorePath gnomeShellEnvVar;
 
     jasonbourne = if jasonbourneStorePath == "" then
-      throw "JASONBOURNE_PATH env var is empty."
+      throw "${jasonbourneEnvVar} env var is empty."
     else prev.stdenv.mkDerivation {
       pname = "jasonbourne";
       version = "3.0.1";

@@ -104,7 +104,8 @@ local-arm:
 
 nixupdate: pull-cache
   # Передаем переменные из .env в sudo environment, так как proprietary.nix их читает через builtins.getEnv
-  sudo --preserve-env=MUTTER_PATH,GNOME_SHELL_PATH,JASONBOURNE_PATH \
+  # Добавлены _ARM версии переменных
+  sudo --preserve-env=MUTTER_PATH,GNOME_SHELL_PATH,JASONBOURNE_PATH,MUTTER_PATH_ARM,GNOME_SHELL_PATH_ARM,JASONBOURNE_PATH_ARM \
     nixos-rebuild switch --flake /etc/nixos#nixos-vm --impure
 
 nixupdate-console:

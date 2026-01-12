@@ -62,15 +62,17 @@
             binaryCacheConfig
           ];
 
-          # isFullDesktop = true
+          # isFullDesktop = true (Heavy apps)
+          # includeProprietary = true (JasonBourne/Mutter)
           specialArgs = {
             inherit inputs pkgs-unstable;
             isFullDesktop = true;
+            includeProprietary = true;
           };
         };
 
         # === LIGHT IMAGE (build-light) ===
-        # Использует vm.nix (как и desktop), но с флагом false
+        # Использует vm.nix, но все флаги выключены
         light = nixos-generators.nixosGenerate {
           inherit pkgs;
           format = "qcow";
@@ -82,9 +84,32 @@
           ];
 
           # isFullDesktop = false
+          # includeProprietary = false
           specialArgs = {
             inherit inputs pkgs-unstable;
             isFullDesktop = false;
+            includeProprietary = false;
+          };
+        };
+
+        # === WITH PACKAGE IMAGE (New) ===
+        # Основан на Light (без тяжелых приложений), но с proprietary.nix и jasonbourne
+        with-package = nixos-generators.nixosGenerate {
+          inherit pkgs;
+          format = "qcow";
+
+          modules = [
+            inputs.home-manager.nixosModules.home-manager
+            ./vm.nix
+            binaryCacheConfig
+          ];
+
+          # isFullDesktop = false (No heavy apps)
+          # includeProprietary = true (Yes JasonBourne)
+          specialArgs = {
+            inherit inputs pkgs-unstable;
+            isFullDesktop = false;
+            includeProprietary = true;
           };
         };
 
@@ -103,6 +128,7 @@
           specialArgs = {
             inherit inputs pkgs-unstable;
             isFullDesktop = false;
+            includeProprietary = false;
           };
         };
       });
@@ -123,6 +149,7 @@
             inherit inputs;
             pkgs-unstable = mkPkgsUnstable "x86_64-linux";
             isFullDesktop = true;
+            includeProprietary = true;
           };
           modules = [
             inputs.home-manager.nixosModules.home-manager
@@ -146,6 +173,7 @@
             inherit inputs;
             pkgs-unstable = mkPkgsUnstable "x86_64-linux";
             isFullDesktop = false;
+            includeProprietary = false;
           };
           modules = [
             inputs.home-manager.nixosModules.home-manager

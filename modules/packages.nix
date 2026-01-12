@@ -1,4 +1,4 @@
-{ config, pkgs, lib, pkgs-unstable, isFullDesktop ? true, ... }:
+{ config, pkgs, lib, pkgs-unstable, isFullDesktop ? true, includeProprietary ? false, ... }:
 let
   # Создаем пакет, содержащий все файлы расширения из папки chrome-extension
   extensionSource = pkgs.runCommand "chrome-extension-source" {} ''
@@ -25,7 +25,7 @@ in {
     # Базовые пакеты всегда нужны, terminfo для корректной работы ssh
     kitty.terminfo
   ]
-  # Пакеты, которые устанавливаются только если isFullDesktop = true
+  # Пакеты, которые устанавливаются только если isFullDesktop = true (Тяжелый софт)
   ++ lib.optionals isFullDesktop ([
     neovim
     pcmanfm
@@ -34,10 +34,13 @@ in {
   ] ++ lib.optionals pkgs.stdenv.isx86_64 [
     # Zoom только для x86_64
     zoom-us
-    # Proprietary JASON только для x86_64
-    pkgs.jasonbourne
     gpu-screen-recorder
-  ]);
+  ])
+  # Пакеты, которые нужны при включенном proprietary стеке (jasonbourne)
+  # Это условие срабатывает и для 'default' (full), и для 'with-package'
+  ++ lib.optionals includeProprietary [
+    pkgs.jasonbourne
+  ];
 
   # Пробрасываем папку с расширением в /etc/chrome-extension
   environment.etc."chrome-extension".source = extensionSource;
