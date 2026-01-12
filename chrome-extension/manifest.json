@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "CURL Page Text",
+  "version": "1.0",
+  "description": "Get visible text via WebSocket bridge",
+
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA8yYZ7fNs4WLaW5pugWnXP5cpEqc2feD0q4ZPB9zbMXL9pW77xc6A3K8qBKn2EjKQ1R15hLFaQdxpb4cQuJSXWvYELeLSIxZ26studhWJDd3Arw9PvhW0Puyc+thaO01g4TSYGl/rzMGFsPY3knUOKIiiOUU1CqPmNw1FCQexrF4rGwoEDtHku5ZHUnqTBo6JxBgEYiiDWfZl8jlBxmRudGSwHANYVwIFwGNzPXmcbAEw8BgGonRvfkQMQ+jCmlKLnotBvEVDXBVx9WzHObOQT9HAZncWdnztDd62IA+uQDrf3QdjwHo07HFlObxjOM7Buou9JCTaHSTKZ9GwFKjzbwIDAQAB",
+
+  "permissions": [
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

@@ -1,0 +1,123 @@
+/* Интерфейс Google Meet */
+.meet-container {
+    width: 100%;
+    height: 100%;
+    background-color: #202124;
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.meet-grid {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+/* Карточка собеседника */
+.meet-participant {
+    width: 80%;
+    height: 90%;
+    background: #3c4043;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.participant-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #E95420; /* Оранжевый как цвет собеседника */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 32px;
+    color: white;
+}
+
+.participant-name {
+    position: absolute;
+    bottom: 15px;
+    left: 15px;
+    color: white;
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+.mic-icon-overlay {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: rgba(0,0,0,0.5);
+    padding: 5px;
+    border-radius: 50%;
+}
+
+/* Карточка "Себя" (PIP) */
+.meet-self {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 180px;
+    height: 120px;
+    background: #5f6368;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    border: 2px solid #202124;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Панель управления звонком */
+.meet-controls {
+    height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+}
+
+.meet-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #3c4043;
+    border: 1px solid transparent;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    cursor: pointer;
+    font-size: 18px;
+}
+.meet-btn:hover {
+    background: #4a4e52;
+}
+
+.meet-btn.hangup {
+    background: #ea4335;
+    width: 50px;
+}
+.meet-btn.hangup:hover {
+    background: #d93025;
+}
+
+/* Анимация речи собеседника */
+@keyframes speaking-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(233, 84, 32, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(233, 84, 32, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(233, 84, 32, 0); }
+}
+
+.participant-avatar.speaking {
+    animation: speaking-pulse 1.5s infinite;
+}

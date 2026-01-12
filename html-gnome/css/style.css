@@ -1,0 +1,161 @@
+:root {
+    --bg-color: #000000;
+    --top-bar-bg: #1d1d1d;
+    --dock-bg: rgba(29, 29, 29, 0.9);
+    --ubuntu-orange: #E95420;
+    --font-ui: 'Ubuntu', 'Segoe UI', sans-serif;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    background: url('https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?q=80&w=1974&auto=format&fit=crop') no-repeat center center fixed;
+    background-size: cover;
+    font-family: var(--font-ui);
+    overflow: hidden;
+    color: white;
+    user-select: none;
+}
+
+/* --- Top Bar --- */
+.top-bar {
+    height: 28px;
+    background: var(--top-bar-bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 15px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    z-index: 1000;
+    position: relative;
+}
+
+.top-bar-left, .top-bar-right {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.top-bar-right {
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.sys-icon svg {
+    width: 16px;
+    height: 16px;
+    opacity: 0.9;
+}
+
+/* --- Dock --- */
+.dock {
+    position: absolute;
+    left: 0;
+    top: 28px;
+    bottom: 0;
+    width: 60px;
+    background: var(--dock-bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 10px;
+    z-index: 900;
+}
+
+.dock-item {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.1s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.dock-item:active {
+    transform: scale(0.9);
+}
+
+.dock-item .chrome-icon {
+    width: 32px;
+    height: 32px;
+}
+
+.app-indicator {
+    position: absolute;
+    left: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 4px;
+    background: var(--ubuntu-orange);
+    border-radius: 50%;
+    opacity: 0;
+    transition: all 0.2s;
+}
+
+.dock-item.running .app-indicator {
+    opacity: 1;
+    height: 8px;
+}
+
+.dock-item.focused .app-indicator {
+    height: 16px;
+}
+
+/* --- Window Base System --- */
+.window {
+    position: absolute;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    /* Разрешаем ресайз через CSS для простоты */
+    resize: both;
+    min-width: 400px;
+    min-height: 300px;
+
+    /* Начальная позиция */
+    top: 80px;
+    left: 100px;
+    width: 900px;
+    height: 600px;
+
+    transition: opacity 0.3s, transform 0.3s;
+    opacity: 1;
+    transform: scale(1);
+    transform-origin: bottom left;
+}
+
+/* Скрываем нативный уголок ресайза браузера, сделаем свой или оставим дефолтный */
+.window::-webkit-resizer {
+    background-color: transparent;
+}
+
+.window.minimized {
+    opacity: 0;
+    transform: scale(0.5) translate(-200px, 200px);
+    pointer-events: none;
+}
+
+.window.closed {
+    display: none;
+}
+
+.window.maximized {
+    top: 28px !important;
+    left: 60px !important; /* Учитываем док */
+    width: calc(100vw - 60px) !important;
+    height: calc(100vh - 28px) !important;
+    border-radius: 0;
+    resize: none;
+    transform: none;
+}

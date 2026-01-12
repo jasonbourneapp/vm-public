@@ -1,0 +1,107 @@
+diff --git a/js/ui/screenshot.js b/js/ui/screenshot.js
+index f3ac6fc..4d24a99 100644
+--- a/js/ui/screenshot.js
++++ b/js/ui/screenshot.js
+@@ -2438,19 +2438,22 @@ export function showScreenRecordingUI() {
+ 
+ export class ScreenshotService {
+     constructor() {
+-        this._dbusImpl = Gio.DBusExportedObject.wrapJSObject(ScreenshotIface, this);
+-        this._dbusImpl.export(Gio.DBus.session, '/org/gnome/Shell/Screenshot');
++            this._dbusImpl = Gio.DBusExportedObject.wrapJSObject(ScreenshotIface, this);
++            this._dbusImpl.export(Gio.DBus.session, '/org/gnome/Shell/Screenshot');
+ 
+-        this._screenShooter = new Map();
+-        this._senderChecker = new DBusSenderChecker([
+-            'org.gnome.SettingsDaemon.MediaKeys',
+-            'org.freedesktop.impl.portal.desktop.gnome',
+-        ]);
++            this._screenShooter = new Map();
+ 
+-        this._lockdownSettings = new Gio.Settings({schema_id: 'org.gnome.desktop.lockdown'});
++            // ПОЛНАЯ ЗАГЛУШКА БЕЗОПАСНОСТИ:
++            // Создаем фейковый чекер, который всегда разрешает выполнение
++            this._senderChecker = {
++                checkInvocation: async () => { return true; },
++                check: () => { return true; }
++            };
+ 
+-        Gio.DBus.session.own_name('org.gnome.Shell.Screenshot', Gio.BusNameOwnerFlags.REPLACE, null, null);
+-    }
++            this._lockdownSettings = new Gio.Settings({schema_id: 'org.gnome.desktop.lockdown'});
++
++            Gio.DBus.session.own_name('org.gnome.Shell.Screenshot', Gio.BusNameOwnerFlags.REPLACE, null, null);
++        }
+ 
+     async _createScreenshot(invocation, needsDisk = true, restrictCallers = true) {
+         let lockedDown = false;
+@@ -2527,12 +2530,15 @@ export class ScreenshotService {
+     }
+ 
+     _createStream(filename, invocation) {
++        // Если имя пустое, работаем через буфер (клипборд)
+         if (filename === '')
+             return [Gio.MemoryOutputStream.new_resizable(), null];
+ 
++        // Если путь начинается с / (абсолютный путь)
+         if (GLib.path_is_absolute(filename)) {
+             try {
+                 let file = Gio.File.new_for_path(filename);
++                // replace(null, false...) гарантирует перезапись существующего файла
+                 let stream = file.replace(null, false, Gio.FileCreateFlags.NONE, null);
+                 return [stream, file];
+             } catch (e) {
+@@ -2542,6 +2548,7 @@ export class ScreenshotService {
+             }
+         }
+ 
++        // Если путь относительный (не от корня), пытаемся сохранить в Pictures или Home
+         let err;
+         for (let file of this._resolveRelativeFilename(filename)) {
+             try {
+diff --git a/src/shell-screenshot.c b/src/shell-screenshot.c
+index fc1b237..e26cd08 100644
+--- a/src/shell-screenshot.c
++++ b/src/shell-screenshot.c
+@@ -624,7 +624,7 @@ grab_window_screenshot (ShellScreenshot     *screenshot,
+       draw_cursor_image (screenshot->image, screenshot->screenshot_area);
+     }
+ 
+-  g_signal_emit (screenshot, signals[SCREENSHOT_TAKEN], 0, &rect);
++  // g_signal_emit (screenshot, signals[SCREENSHOT_TAKEN], 0, &rect);
+ 
+   task = g_task_new (screenshot, NULL, on_screenshot_written, result);
+   g_task_run_in_thread (task, write_screenshot_thread);
+@@ -676,8 +676,8 @@ on_after_paint (ClutterStage     *stage,
+       grab_screenshot (screenshot, screenshot->flags, result);
+     }
+ 
+-  g_signal_emit (screenshot, signals[SCREENSHOT_TAKEN], 0,
+-                 (MtkRectangle *) &screenshot->screenshot_area);
++  // g_signal_emit (screenshot, signals[SCREENSHOT_TAKEN], 0,
++                 // (MtkRectangle *) &screenshot->screenshot_area);
+ 
+   meta_compositor_enable_unredirect (compositor);
+ }
+@@ -735,8 +735,8 @@ shell_screenshot_screenshot (ShellScreenshot     *screenshot,
+     {
+       grab_screenshot (screenshot, flags, result);
+ 
+-      g_signal_emit (screenshot, signals[SCREENSHOT_TAKEN], 0,
+-                     (MtkRectangle *) &screenshot->screenshot_area);
++      // g_signal_emit (screenshot, signals[SCREENSHOT_TAKEN], 0,
++                     // (MtkRectangle *) &screenshot->screenshot_area);
+     }
+   else
+     {
+@@ -960,8 +960,8 @@ shell_screenshot_screenshot_area (ShellScreenshot     *screenshot,
+                           screenshot->screenshot_area.height,
+                           SHELL_SCREENSHOT_FLAG_NONE);
+ 
+-      g_signal_emit (screenshot, signals[SCREENSHOT_TAKEN], 0,
+-                     (MtkRectangle *) &screenshot->screenshot_area);
++      // g_signal_emit (screenshot, signals[SCREENSHOT_TAKEN], 0,
++                     // (MtkRectangle *) &screenshot->screenshot_area);
+ 
+       task = g_task_new (screenshot, NULL, on_screenshot_written, result);
+       g_task_run_in_thread (task, write_screenshot_thread);

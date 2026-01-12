@@ -1,0 +1,19 @@
+# Общая функция для получения хостов из SSH конфига
+function __fish_get_ssh_hosts
+    if test -f $HOME/.ssh/config
+        command grep '^Host ' $HOME/.ssh/config | string replace -r '^Host +' '' | string split ' ' | string match -v '*[*?]*'
+    end
+end
+
+# Автодополнение для всех команд (r2l, r2l-port, l2r, l2r-port)
+# Первый аргумент - локальный порт
+complete -c r2l -c r2l-port -c l2r -c l2r-port -n '__fish_is_first_arg' -d 'Local port'
+
+# Второй аргумент
+# Для r2l и l2r - это хост
+complete -c r2l -c l2r -n '__fish_is_nth_token 2' -a '(__fish_get_ssh_hosts)' -d 'SSH host'
+# Для r2l-port и l2r-port - это удаленный порт
+complete -c r2l-port -c l2r-port -n '__fish_is_nth_token 2' -d 'Remote port'
+
+# Третий аргумент (только для r2l-port и l2r-port) - хост
+complete -c r2l-port -c l2r-port -n '__fish_is_nth_token 3' -a '(__fish_get_ssh_hosts)' -d 'SSH host'

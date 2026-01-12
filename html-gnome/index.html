@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ubuntu Gnome JS</title>
+    <!-- Подключаем стили -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/chrome.css">
+    <link rel="stylesheet" href="css/meet.css">
+    <link rel="stylesheet" href="css/code.css">
+    <!-- Стиль нового приложения -->
+    <link rel="stylesheet" href="css/jasonbourne.css">
+</head>
+<body>
+
+    <!-- Верхняя панель (Top Bar) -->
+    <div class="top-bar">
+        <div class="top-bar-left">
+            <span class="activities">Activities</span>
+        </div>
+        <div class="top-bar-center">
+            <span id="clock">Dec 30 05:31</span>
+        </div>
+        <div class="top-bar-right">
+            <div class="sys-icon">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C7.5 2 4 4.5 2 7.5l10 12.5L22 7.5C20 4.5 16.5 2 12 2z"/></svg>
+            </div>
+            <div class="sys-icon">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+            </div>
+            <div class="sys-icon">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Левый док (Dock) -->
+    <div class="dock">
+        <!-- Иконка Chrome -->
+        <div class="dock-item active" onclick="System.toggleApp('chrome')">
+            <div class="app-indicator"></div>
+            <svg viewBox="0 0 24 24" class="chrome-icon">
+                <path fill="#EA4335" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8 0-.29.02-.58.05-.86l4.63 8.01A7.98 7.98 0 0 1 12 20zm5.95-3.32l-2.8-4.85h5.75c-.24 1.93-1.09 3.66-2.35 4.96-.2.17-.4.29-.6.41v-.52z"/>
+                <path fill="#FBBC05" d="M12 6c2.14 0 4.07.87 5.5 2.29L22 3.71C19.46 1.46 15.93 0 12 0 6.6 0 2.05 3.6 0 8.5h6.05C6.72 7.07 9.16 6 12 6z"/>
+                <path fill="#34A853" d="M12 16c-1.33 0-2.54-.64-3.33-1.66L4.76 7.42C5.9 5.34 8.65 4 12 4c.64 0 1.25.07 1.83.19l4.5 7.79c-1.46 2.5-4.14 4.02-6.33 4.02z"/>
+                <circle fill="#4285F4" cx="12" cy="12" r="3.5"/>
+            </svg>
+        </div>
+
+        <!-- Иконка JasonBourne (Terminal/AI style) -->
+        <div class="dock-item" onclick="System.toggleApp('jasonbourne')">
+            <div class="app-indicator"></div>
+            <svg viewBox="0 0 24 24" style="width:32px; height:32px;">
+                <rect x="2" y="2" width="20" height="20" rx="4" fill="#2d2d2d"/>
+                <circle cx="8" cy="12" r="2" fill="#E95420"/>
+                <circle cx="16" cy="12" r="2" fill="#4285F4"/>
+                <path d="M7 17h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Окно браузера Chrome -->
+    <div id="app-chrome" class="window chrome-window">
+        <div class="title-bar" id="chrome-title-bar">
+            <div class="tabs-container">
+                <div class="tab active" onclick="Browser.switchTab(1)" id="tab-btn-1">
+                    <div class="tab-favicon meet-favicon"></div>
+                    <span class="tab-title">Google Meet - Interview</span>
+                    <span class="tab-close">×</span>
+                </div>
+                <div class="tab" onclick="Browser.switchTab(2)" id="tab-btn-2">
+                    <div class="tab-favicon yandex-favicon">Y</div>
+                    <span class="tab-title">Yandex Code</span>
+                    <span class="tab-close">×</span>
+                </div>
+                <div class="new-tab">+</div>
+            </div>
+            <div class="window-controls">
+                <div class="win-btn minimize" onclick="System.minimizeApp('chrome')">−</div>
+                <div class="win-btn maximize" onclick="WindowManager.toggleMaximize('chrome')">□</div>
+                <div class="win-btn close" onclick="System.closeApp('chrome')">×</div>
+            </div>
+        </div>
+        <div class="nav-bar">
+            <div class="nav-buttons"><span>←</span><span>→</span><span>↻</span></div>
+            <div class="address-bar">
+                <span class="secure-lock">🔒</span>
+                <input type="text" id="url-input" value="https://meet.google.com/abc-defg-hij" readonly>
+            </div>
+            <div class="profile-icon"></div>
+        </div>
+        <div class="window-content">
+            <div id="tab-content-1" class="tab-content active"></div>
+            <div id="tab-content-2" class="tab-content"></div>
+        </div>
+        <div class="resize-handle"></div>
+    </div>
+
+    <!-- Окно JasonBourne -->
+    <div id="app-jasonbourne" class="window jb-window closed">
+        <!-- Заголовок окна -->
+        <div class="jb-title-bar" id="jb-title-bar">
+            <div class="jb-title-text">jasonbourne</div>
+            <div class="window-controls">
+                <div class="win-btn minimize" onclick="System.minimizeApp('jasonbourne')">−</div>
+                <div class="win-btn maximize" onclick="WindowManager.toggleMaximize('jasonbourne')">□</div>
+                <div class="win-btn close" onclick="System.closeApp('jasonbourne')">×</div>
+            </div>
+        </div>
+
+        <!-- Контент -->
+        <div class="window-content jb-content" id="jb-content-area">
+            <!-- Сюда JS вставит верстку -->
+        </div>
+
+        <div class="resize-handle"></div>
+    </div>
+
+    <!-- Подключаем скрипты -->
+    <script src="js/system.js"></script>
+    <script src="js/window-manager.js"></script>
+    <script src="js/browser.js"></script>
+
+    <!-- Приложения -->
+    <script src="js/tabs/meet.js"></script>
+    <script src="js/tabs/code.js"></script>
+    <script src="js/apps/jasonbourne.js"></script>
+</body>
+</html>

@@ -1,0 +1,296 @@
+/* Основной контейнер окна */
+.jb-window {
+    background: #181818;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', sans-serif;
+    border: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    z-index: 10000; /* Always on top по умолчанию */
+}
+
+/* Кастомный Title Bar */
+.jb-title-bar {
+    height: 32px;
+    background: #1f1f1f;
+    border-bottom: 1px solid #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    user-select: none;
+}
+
+.jb-title-text {
+    font-size: 13px;
+    font-weight: bold;
+    color: #ccc;
+}
+
+.jb-title-bar .window-controls {
+    position: absolute;
+    right: 10px;
+    top: 6px;
+}
+
+/* Контентная область (Flex column) */
+.jb-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    gap: 10px;
+    background: #121212;
+}
+
+/* Панели (Секции) */
+.jb-panel {
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Секция Транскрипция */
+.jb-transcription {
+    height: 80px; /* Примерная высота */
+}
+
+.jb-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.jb-section-title {
+    font-weight: bold;
+    font-size: 14px;
+    color: #fff;
+}
+
+.jb-status-text {
+    text-align: center;
+    color: #888;
+    font-style: italic;
+    font-size: 13px;
+}
+
+/* Тоггл свитч */
+.toggle-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #2b2b2b;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.toggle-label {
+    font-size: 11px;
+    color: #aaa;
+}
+
+.toggle-switch {
+    width: 28px;
+    height: 16px;
+    background: #000;
+    border-radius: 8px;
+    position: relative;
+    cursor: pointer;
+}
+.toggle-switch::after {
+    content: '';
+    position: absolute;
+    left: 14px; /* Включено */
+    top: 2px;
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-radius: 50%;
+}
+
+.jb-bk-badge {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, #4f76ff, #7a9eff);
+    border-radius: 50%;
+    color: white;
+    font-weight: bold;
+    font-size: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-left: 10px;
+    cursor: pointer;
+}
+
+/* Секция AI Chat */
+.jb-chat {
+    flex-grow: 1; /* Занимает оставшееся место */
+    position: relative;
+}
+
+.jb-chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #333;
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+}
+
+.jb-chat-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.jb-btn-small {
+    background: linear-gradient(to bottom, #5a667a, #464f5e);
+    border: 1px solid #666;
+    color: white;
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+.jb-btn-small:active { transform: translateY(1px); }
+
+/* Область чата (пустая) */
+.jb-chat-area {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 20px;
+    color: #555;
+    font-size: 14px;
+    font-style: italic;
+}
+
+/* Секция ввода */
+.jb-input-container {
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.jb-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: #ccc;
+    outline: none;
+    font-size: 13px;
+    font-family: inherit;
+}
+
+/* Нижняя панель управления */
+.jb-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 5px 5px 5px;
+}
+
+/* Кнопка записи (Красная) */
+.jb-rec-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #3a2525;
+    border: 1px solid #d93025;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 0 5px rgba(217, 48, 37, 0.4);
+}
+.jb-rec-inner {
+    width: 16px;
+    height: 16px;
+    background: #d93025;
+    border-radius: 3px; /* Квадрат при записи */
+}
+
+/* Группы кнопок моделей */
+.jb-models {
+    display: flex;
+    gap: 6px;
+}
+
+.jb-btn-model {
+    background: #3e4452; /* Дефолтный серый */
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.jb-btn-model.active {
+    background: linear-gradient(90deg, #6b7c93, #8a9bb3); /* Подсветка */
+}
+
+/* Синие кнопки действий */
+.jb-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.jb-btn-action {
+    background: linear-gradient(to bottom, #5a75a8, #4a628e);
+    border: 1px solid #5f7eb5;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* Разделитель */
+.jb-sep { width: 1px; height: 24px; background: #444; margin: 0 5px; }
+
+/* Большая кнопка SQL/Bash */
+.jb-big-btn {
+    flex-grow: 1;
+    background: linear-gradient(90deg, #5a667a, #7384a3);
+    border: 1px solid #666;
+    color: white;
+    font-weight: bold;
+    text-align: center;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+/* Правые иконки */
+.jb-right-icons {
+    display: flex;
+    gap: 6px;
+}
+.jb-icon-box {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+.icon-orange { background: #E95420; }
+.icon-green { background: #34A853; }
+.icon-blue { background: #4285F4; }
+.icon-purple { background: #904ea8; }
+.icon-gray { background: #444; width: 16px; height: 16px; align-self: center; }
+
+/* SVG */
+.jb-icon-box svg { width: 14px; height: 14px; fill: white; }

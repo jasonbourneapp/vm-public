@@ -1,0 +1,73 @@
+name: Build NixOS Images
+
+on:
+  push:
+    branches: [ "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          # - arch: x86_64
+          #   runner: ubuntu-24.04
+          #   system: x86_64-linux
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            system: aarch64-linux
+
+    name: Build ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install SSH Client
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-25.11
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            use-xdg-base-directories = true
+            system-features = nixos-test benchmark big-parallel kvm
+
+      - name: Add github.com to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+      - name: Build QCOW2 Image
+        run: |
+          nix build .#packages.${{ matrix.system }}.light -L
+
+          # 1. Создаем папку для артефактов
+          mkdir -p artifacts
+
+          # 2. Копируем результат, разыменовывая симлинки (-L).
+          # Nix создает симлинк 'result', указывающий в /nix/store.
+          # GitHub Actions не умеет загружать файлы напрямую из /nix/store через симлинк,
+          # поэтому нужно физически скопировать файл.
+          cp -rL result/* artifacts/
+
+          # (Опционально) Переименуем для удобства, если там лежит один файл
+          # mv artifacts/nixos.qcow2 artifacts/nixos-${{ matrix.arch }}.qcow2
+
+      # !!! ЭТОТ ШАГ БЫЛ ПРОПУЩЕН !!!
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nixos-image-${{ matrix.arch }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 1
