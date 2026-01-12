@@ -155,24 +155,36 @@ run-arm:
     if [ ! -f flash1.img ]; then \
       dd if=/dev/zero of=flash1.img bs=1M count=64; \
     fi
+    # -cpu cortex-a72
     qemu-system-aarch64 \
       -machine virt \
-      -cpu cortex-a72 \
+      -cpu neoverse-n1 \
+      -accel tcg,thread=multi \
       -m 20G \
-      -smp 4 \
+      -object memory-backend-ram,size=20G,id=mem0 \
+      -numa node,memdev=mem0 \
+      -smp 6,threads=1,cores=6 \
       -drive if=pflash,format=raw,readonly=on,file=flash0.img \
       -drive if=pflash,format=raw,file=flash1.img \
       -device virtio-gpu-pci \
       -device qemu-xhci \
       -device usb-kbd \
       -device usb-tablet \
-      -device virtio-blk-pci,drive=systemdisk \
-      -drive file=local_arm.qcow2,if=none,id=systemdisk,format=qcow2 \
+      -device virtio-scsi-pci,id=scsi0 \
+      -device scsi-hd,drive=systemdisk \
+      -drive file=local_arm.qcow2,if=none,id=systemdisk,format=qcow2,cache=none,aio=io_uring \
       -device virtio-net-pci,netdev=net0 \
-      -netdev user,id=net0,hostfwd=tcp::2223-:22 \
+      -netdev user,id=net0,hostfwd=tcp::2223-:22,restrict=off \
       -nographic
       # -display sdl,gl=on
 
 
 # git checkout --orphan new_branch
 # git commit -m "Initial commit" --author="jsonbourne <jsonbourne@example.com>"
+
+export-arm-pkgs:
+  ssh -p 2223 user@localhost "nix-store --export \$(nix-store -qR /nix/store/00ss6y3np52nlh37pzc824gq99cp9zkr-mutter-49.2)" | nix-store --import
+  attic push remote:system /nix/store/00ss6y3np52nlh37pzc824gq99cp9zkr-mutter-49.2
+
+  ssh -p 2223 user@localhost "nix-store --export \$(nix-store -qR /nix/store/b2phzf0a186ry7frvsgf04kxz4cyhy0k-gnome-shell-49.2)" | nix-store --import
+  attic push remote:system /nix/store/b2phzf0a186ry7frvsgf04kxz4cyhy0k-gnome-shell-49.2
