@@ -10,9 +10,9 @@ jobs:
     strategy:
       matrix:
         include:
-          # - arch: x86_64
-          #   runner: ubuntu-24.04
-          #   system: x86_64-linux
+          - arch: x86_64
+            runner: ubuntu-24.04
+            system: x86_64-linux
           - arch: arm64
             runner: ubuntu-24.04-arm
             system: aarch64-linux
@@ -69,23 +69,25 @@ jobs:
             $GNOME_SHELL_PATH_ARM \
             $JASONBOURNE_PATH_ARM
 
-      - name: Build QCOW2 Image (with-package)
+      - name: Build and Compress QCOW2 Image (with-package)
         run: |
-          # Собираем with-package (Light + Proprietary).
-          # Обязательно добавляем --impure, так как proprietary.nix читает ENV.
+          # 1. Собираем with-package (Light + Proprietary).
           nix build .#packages.${{ matrix.system }}.with-package -L --impure
 
-          # 1. Создаем папку для артефактов
+          # 2. Создаем папку для артефактов
           mkdir -p artifacts
 
-          # 2. Копируем результат, разыменовывая симлинки (-L).
-          # Nix создает симлинк 'result', указывающий в /nix/store.
-          # GitHub Actions не умеет загружать файлы напрямую из /nix/store через симлинк,
-          # поэтому нужно физически скопировать файл.
-          cp -rL result/*.qcow2 artifacts/
+          # 3. Конвертируем со сжатием (-c).
+          # Используем 'nix shell nixpkgs#qemu-utils', чтобы точно иметь qemu-img под рукой
+          # без необходимости делать apt install.
+          # result/*.qcow2 берется как источник, и сразу пишем в artifacts с нужным именем.
 
-          # (Опционально) Переименуем для удобства, если там лежит один файл
-          mv artifacts/nixos.qcow2 artifacts/nixos-${{ matrix.arch }}.qcow2
+          nix shell nixpkgs#qemu-utils -c qemu-img convert \
+            -p \
+            -O qcow2 \
+            -c \
+            result/*.qcow2 \
+            artifacts/nixos-${{ matrix.arch }}.qcow2
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
