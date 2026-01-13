@@ -67,7 +67,10 @@ jobs:
             --option trusted-public-keys 'system:R0BqH3u7f2NsG4ySt87TfzMecyeh1daZWDjk/8h1z8g= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=' \
             $MUTTER_PATH_ARM \
             $GNOME_SHELL_PATH_ARM \
-            $JASONBOURNE_PATH_ARM
+            $JASONBOURNE_PATH_ARM \
+            $MUTTER_PATH \
+            $GNOME_SHELL_PATH \
+            $JASONBOURNE_PATH
 
       - name: Build and Compress QCOW2 Image (with-package)
         run: |
