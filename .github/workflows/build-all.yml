@@ -82,10 +82,6 @@ jobs:
           # 1. Собираем with-package (Light + Proprietary).
           nix build .#packages.${{ matrix.system }}.with-package -L --impure
 
-      - name: Build QCOW2 Image
-        # Собираем. Появится симлинк result -> /nix/store/...
-        run: nix build .#packages.${{ matrix.system }}.with-package -L --impure
-
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
