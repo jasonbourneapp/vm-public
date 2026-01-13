@@ -31,6 +31,7 @@
 
       binaryCacheConfig = {
         nix.settings = {
+          trusted-users = [ "root" "@wheel" ];
           experimental-features = [ "nix-command" "flakes" "fetch-closure" ];
           extra-substituters = [
             "https://cache.nixos.org/"
@@ -60,15 +61,23 @@
           pkgs.git
           (pkgs.writeShellScriptBin "update" ''
             set -e
+
+            # === ПРОВЕРКА ПРАВ ROOT ===
+            # Используем id -u, так как это работает в любой оболочке (sh/bash/zsh)
+            if [ "$(id -u)" -ne 0 ]; then
+               echo "----------------------------------------------------------------"
+               echo "ОШИБКА: У вас нет прав для выполнения обновления!"
+               echo "Пожалуйста, запустите эту команду через sudo:"
+               echo ""
+               echo "    sudo update"
+               echo "----------------------------------------------------------------"
+               exit 1
+            fi
+
             REPO="https://github.com/jasonbourneapp/vm-public.git"
             DIR="/etc/nixos"
             TIMESTAMP=$(date +%Y%m%d-%H%M%S)
             BACKUP_DIR="/etc/nixos-$TIMESTAMP"
-
-            if [ "$EUID" -ne 0 ]; then
-               echo "Ошибка: Скрипт должен быть запущен от root (sudo update)."
-               exit 1
-            fi
 
             echo "======================================================="
             echo ">>> JasonBourne VM Update Tool"

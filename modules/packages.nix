@@ -31,7 +31,7 @@ in {
     pcmanfm
     kitty
     pkgs-unstable.telegram-desktop
-  ] ++ lib.optionals pkgs.stdenv.isx86_64 [
+  ] ++ lib.optionals pkgs.stdenv.hostPlatform.isx86_64 [
     # Zoom только для x86_64
     zoom-us
     gpu-screen-recorder

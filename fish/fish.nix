@@ -223,8 +223,6 @@
       pdf = "evince";
       n = "nvim";
       sh = "stat --format '%a'";
-      update = "sudo nixos-rebuild switch";
-      hupdate = "home-manager switch";
       ip = "ip --color=auto";
       dt = "difft";
       bcat = "bat --pager=never --style=changes,rule,numbers,snip";
