@@ -99,16 +99,18 @@
       # Создаем папку для исходников расширения
       mkdir -p $out/chrome-extension
 
-      # Копируем корневые файлы
-      cp ${../.env} $out/.env 2>/dev/null || true
-      cp ${../flake.nix} $out/flake.nix 2>/dev/null || true
-      cp ${../flake.lock} $out/flake.lock 2>/dev/null || true
-      cp ${../vm.nix} $out/vm.nix 2>/dev/null || true
-      cp ${../vm-console.nix} $out/vm-console.nix 2>/dev/null || true
-      cp ${../justfile} $out/justfile 2>/dev/null || true
-      cp ${../black.jpg} $out/black.jpg 2>/dev/null || true
+      # Копируем .env ТОЛЬКО если он существует и виден Nix
+      cp ${../configs/dev.env} $out/.env
 
-      # Копируем модули (включая новые консольные)
+      # Копируем корневые файлы
+      cp ${../flake.nix} $out/flake.nix
+      cp ${../flake.lock} $out/flake.lock
+      cp ${../vm.nix} $out/vm.nix
+      cp ${../vm-console.nix} $out/vm-console.nix
+      cp ${../justfile} $out/justfile
+      cp ${../black.jpg} $out/black.jpg
+
+      # Копируем модули
       cp ${./system.nix} $out/modules/system.nix
       cp ${./desktop.nix} $out/modules/desktop.nix
       cp ${./packages.nix} $out/modules/packages.nix
@@ -119,19 +121,26 @@
       cp ${./dconf.nix} $out/modules/dconf.nix
 
       # Копируем папку с исходным кодом расширения (chrome-extension)
-      cp -r ${../chrome-extension}/* $out/chrome-extension/
+      # Важно: если папка пуста или игнорируется git, это тоже может вызвать ошибку.
+      if [ -d "${../chrome-extension}" ]; then
+        cp -r ${../chrome-extension}/* $out/chrome-extension/
+      fi
 
       # Копируем fish и tmux
-      cp -r ${../fish}/* $out/fish/ 2>/dev/null || true
-      cp -r ${../tmux}/* $out/tmux/ 2>/dev/null || true
-      cp ${../gitconfig.txt} $out/gitconfig.txt 2>/dev/null || true
+      cp -r ${../fish}/* $out/fish/
+      cp -r ${../tmux}/* $out/tmux/
+      cp ${../gitconfig.txt} $out/gitconfig.txt
     '';
   in lib.stringAfter [ "etc" ] ''
+    # Скрипт выполняется только если /etc/nixos/flake.nix еще нет (первый запуск или чистая установка)
     if [ ! -e /etc/nixos/flake.nix ]; then
       echo "Populating /etc/nixos with mutable configuration files..."
       mkdir -p /etc/nixos
       cp -r ${configSource}/* /etc/nixos/
+
+      # Обязательно даем права на запись, чтобы git и update скрипт работали
       chmod -R +w /etc/nixos
+
       echo "Configuration files installed to /etc/nixos."
     fi
   '';

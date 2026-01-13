@@ -37,7 +37,7 @@ run-linux:
       -cpu host \
       -m 8G \
       -smp 6 \
-      -vga virtio -display sdl,gl=on \
+      -vga virtio \
       -device virtio-blk-pci,drive=systemdisk \
       -drive file=local_working_disk.qcow2,if=none,id=systemdisk,format=qcow2 \
       -device virtio-net-pci,netdev=net0 \
@@ -46,7 +46,10 @@ run-linux:
       -device hda-duplex,audiodev=snd0 \
       -device qemu-xhci \
       -device usb-host,vendorid=0x04f2,productid=0xb83c \
-      -audiodev pa,id=snd0
+      -audiodev pa,id=snd0 \
+      -nographic
+    # -display sdl,gl=on
+
 
 # Запуск консольного образа (без GL и лишних устройств)
 run-console:

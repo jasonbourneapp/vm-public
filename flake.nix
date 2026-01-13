@@ -45,6 +45,92 @@
         };
       };
 
+      # === МОДУЛЬ ОБНОВЛЕНИЯ ===
+      # Генерирует скрипт update, который подтягивает конфиг из git
+      # и пересобирает систему.
+      mkUpdateModule = targetFlake: ({ pkgs, ... }: {
+
+        # РЕШЕНИЕ ПРОБЛЕМЫ "dubious ownership":
+        programs.git = {
+          enable = true;
+          config.safe.directory = [ "/etc/nixos" ];
+        };
+
+        environment.systemPackages = [
+          pkgs.git
+          (pkgs.writeShellScriptBin "update" ''
+            set -e
+            REPO="https://github.com/jasonbourneapp/vm-public.git"
+            DIR="/etc/nixos"
+            TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+            BACKUP_DIR="/etc/nixos-$TIMESTAMP"
+
+            if [ "$EUID" -ne 0 ]; then
+               echo "Ошибка: Скрипт должен быть запущен от root (sudo update)."
+               exit 1
+            fi
+
+            echo "======================================================="
+            echo ">>> JasonBourne VM Update Tool"
+            echo ">>> Цель: ${targetFlake}"
+            echo "======================================================="
+
+            mkdir -p "$DIR"
+            cd "$DIR"
+
+            # Разрешаем git в текущей сессии
+            ${pkgs.git}/bin/git config --global --add safe.directory "$DIR" || true
+
+            # 1. Проверка Git и создание бэкапов
+            if [ ! -d ".git" ]; then
+              # Если папка не пуста и не git — делаем бэкап
+              if [ "$(ls -A "$DIR")" ]; then
+                 echo ">>> Папка содержит файлы, но не является git-репозиторием."
+                 echo ">>> Создание бэкапа в $BACKUP_DIR..."
+                 cp -r "$DIR" "$BACKUP_DIR"
+              fi
+
+              echo ">>> Инициализация из $REPO..."
+              ${pkgs.git}/bin/git init
+              ${pkgs.git}/bin/git remote add origin "$REPO"
+              ${pkgs.git}/bin/git fetch origin
+              ${pkgs.git}/bin/git reset --hard origin/master
+
+            else
+              echo ">>> Скачивание изменений..."
+              ${pkgs.git}/bin/git fetch origin
+
+              # Если есть локальные изменения — делаем бэкап перед сбросом
+              if [ -n "$(${pkgs.git}/bin/git status --porcelain)" ]; then
+                 echo ">>> Обнаружены локальные изменения."
+                 echo ">>> Создание бэкапа в $BACKUP_DIR..."
+                 cp -r "$DIR" "$BACKUP_DIR"
+              fi
+
+              ${pkgs.git}/bin/git reset --hard origin/master
+            fi
+
+            # 2. Загрузка переменных окружения с явным экспортом
+            if [ -f ".env" ]; then
+              echo ">>> Загрузка конфигурации из .env..."
+              # Экспортируем все переменные из .env
+              export $(grep -v '^#' .env | xargs)
+            fi
+
+            # 3. Пересборка системы
+            echo ">>> Запуск пересборки системы (NixOS Rebuild)..."
+            # Используем --impure для доступа к переменным и --show-trace для деталей ошибок
+            nixos-rebuild switch --flake .#${targetFlake} --impure --show-trace
+
+            echo "======================================================="
+            echo ">>> Обновление успешно завершено!"
+            echo ">>> Для применения изменений ядра или драйверов перезагрузитесь:"
+            echo ">>> sudo reboot"
+            echo "======================================================="
+          '')
+        ];
+      });
+
     in
     {
       packages = forAllSystems (system: let
@@ -60,6 +146,7 @@
             inputs.home-manager.nixosModules.home-manager
             ./vm.nix
             binaryCacheConfig
+            (mkUpdateModule "nixos-vm")
           ];
 
           # isFullDesktop = true (Heavy apps)
@@ -81,6 +168,7 @@
             inputs.home-manager.nixosModules.home-manager
             ./vm.nix
             binaryCacheConfig
+            (mkUpdateModule "nixos-light")
           ];
 
           # isFullDesktop = false
@@ -102,6 +190,7 @@
             inputs.home-manager.nixosModules.home-manager
             ./vm.nix
             binaryCacheConfig
+            (mkUpdateModule "nixos-vm")
           ];
 
           # isFullDesktop = false (No heavy apps)
@@ -123,6 +212,7 @@
             inputs.home-manager.nixosModules.home-manager
             ./vm-console.nix
             binaryCacheConfig
+            (mkUpdateModule "nixos-console")
           ];
 
           specialArgs = {
@@ -155,9 +245,34 @@
             inputs.home-manager.nixosModules.home-manager
             ./vm.nix
             binaryCacheConfig
+            (mkUpdateModule "nixos-vm")
             ({ modulesPath, ... }: {
               imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];
               # boot.loader.grub removed here to use systemd-boot from system.nix
+              fileSystems."/" = {
+                device = "/dev/disk/by-label/nixos";
+                fsType = "ext4";
+                autoResize = true;
+              };
+            })
+          ];
+        };
+
+        "nixos-light" = nixpkgs.lib.nixosSystem {
+          pkgs = mkPkgs "x86_64-linux";
+          specialArgs = {
+            inherit inputs;
+            pkgs-unstable = mkPkgsUnstable "x86_64-linux";
+            isFullDesktop = false;
+            includeProprietary = false;
+          };
+          modules = [
+            inputs.home-manager.nixosModules.home-manager
+            ./vm.nix
+            binaryCacheConfig
+            (mkUpdateModule "nixos-light")
+            ({ modulesPath, ... }: {
+              imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];
               fileSystems."/" = {
                 device = "/dev/disk/by-label/nixos";
                 fsType = "ext4";
@@ -179,6 +294,7 @@
             inputs.home-manager.nixosModules.home-manager
             ./vm-console.nix
             binaryCacheConfig
+            (mkUpdateModule "nixos-console")
             ({ modulesPath, ... }: {
               imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];
               # boot.loader.grub removed here to use systemd-boot from system.nix
