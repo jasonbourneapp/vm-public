@@ -10,6 +10,7 @@ let
 in {
   environment.systemPackages = with pkgs; [
     vim
+    neovim
     git
     curl
     htop
@@ -28,7 +29,6 @@ in {
   ]
   # Пакеты, которые устанавливаются только если isFullDesktop = true (Тяжелый софт)
   ++ lib.optionals isFullDesktop ([
-    neovim
     pcmanfm
     kitty
     pkgs.telegram-desktop

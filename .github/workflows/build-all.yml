@@ -10,9 +10,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - arch: x86_64
-            runner: ubuntu-24.04
-            system: x86_64-linux
+          # - arch: x86_64
+          #   runner: ubuntu-24.04
+          #   system: x86_64-linux
           - arch: arm64
             runner: ubuntu-24.04-arm
             system: aarch64-linux
@@ -89,13 +89,14 @@ jobs:
           # Используем 'nix shell nixpkgs#qemu-utils', чтобы точно иметь qemu-img под рукой
           # без необходимости делать apt install.
           # result/*.qcow2 берется как источник, и сразу пишем в artifacts с нужным именем.
+          mv result/*.qcow2 artifacts/nixos-${{ matrix.arch }}.qcow2
 
-          nix shell nixpkgs#qemu-utils -c qemu-img convert \
-            -p \
-            -O qcow2 \
-            -c \
-            result/*.qcow2 \
-            artifacts/nixos-${{ matrix.arch }}.qcow2
+          # nix shell nixpkgs#qemu-utils -c qemu-img convert \
+          #   -p \
+          #   -O qcow2 \
+          #   -c \
+          #   result/*.qcow2 \
+          #   artifacts/nixos-${{ matrix.arch }}.qcow2
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
