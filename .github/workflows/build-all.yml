@@ -24,19 +24,14 @@ jobs:
       contents: read
       id-token: write
 
-    # Определяем переменные окружения для бинарников (копии из .env)
-    env:
-      MUTTER_PATH_ARM: /nix/store/00ss6y3np52nlh37pzc824gq99cp9zkr-mutter-49.2
-      GNOME_SHELL_PATH_ARM: /nix/store/b2phzf0a186ry7frvsgf04kxz4cyhy0k-gnome-shell-49.2
-      JASONBOURNE_PATH_ARM: /nix/store/anck8nvlirrfpbnhzvpjb97x9lflp0zi-jasonbourne-v3.0.1
-      # Добавляем x86 пути на случай если раскомментируют x86 в матрице
-      MUTTER_PATH: /nix/store/fks66fq32rglhmbwfg3pj935saqwzvld-mutter-49.2
-      GNOME_SHELL_PATH: /nix/store/rsyl3sipf4yk8whja4plafx5z6l05rqv-gnome-shell-49.2
-      JASONBOURNE_PATH: /nix/store/05ckh7zfabh20lxp4k1kxgb6nyaqqy4y-jasonbourne-v3.0.1
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Load environment variables from .env
+        run: |
+          # Читаем .env, игнорируем комментарии и пустые строки, добавляем в GITHUB_ENV
+          grep -v '^#' .env | grep -v '^\s*$' >> $GITHUB_ENV
 
       - name: Install SSH Client
         uses: webfactory/ssh-agent@v0.9.0
@@ -67,15 +62,15 @@ jobs:
       #       $GNOME_SHELL_PATH \
       #       $JASONBOURNE_PATH
 
-      # - name: Pull Binary Cache
-      #   if: matrix.arch == 'arm64'
-      #   run: |
-      #     nix-store --realise \
-      #       --option substituters 'http://devready.work:8080/system https://cache.nixos.org' \
-      #       --option trusted-public-keys 'system:R0BqH3u7f2NsG4ySt87TfzMecyeh1daZWDjk/8h1z8g= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=' \
-      #       $MUTTER_PATH_ARM \
-      #       $GNOME_SHELL_PATH_ARM \
-      #       $JASONBOURNE_PATH_ARM
+      - name: Pull Binary Cache
+        if: matrix.arch == 'arm64'
+        run: |
+          nix-store --realise \
+            --option substituters 'http://devready.work:8080/system https://cache.nixos.org' \
+            --option trusted-public-keys 'system:R0BqH3u7f2NsG4ySt87TfzMecyeh1daZWDjk/8h1z8g= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=' \
+            $MUTTER_PATH_ARM \
+            $GNOME_SHELL_PATH_ARM \
+            $JASONBOURNE_PATH_ARM
 
       - name: Build and Compress QCOW2 Image (with-package)
         run: |
