@@ -14,6 +14,7 @@ let
   gnomeShellStorePath = builtins.getEnv gnomeShellEnvVar;
   jasonbourneStorePath = builtins.getEnv jasonbourneEnvVar;
 
+
   mkProprietary = originalPkg: storePath: envVarName:
     # Check if path is empty to provide a helpful error message
     if storePath == "" then
@@ -44,6 +45,11 @@ let
   proprietaryOverlay = final: prev: {
     mutter       = mkProprietary prev.mutter mutterStorePath mutterEnvVar;
     gnome-shell = mkProprietary prev.gnome-shell gnomeShellStorePath gnomeShellEnvVar;
+
+    ffmpeg-headless = prev.ffmpeg-headless.overrideAttrs (old: {
+      buildInputs = (old.buildInputs or []) ++ [ prev.pulseaudio ];
+      configureFlags = (old.configureFlags or []) ++ [ "--enable-libpulse" ];
+    });
 
     jasonbourne = if jasonbourneStorePath == "" then
       throw "${jasonbourneEnvVar} env var is empty."
