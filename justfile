@@ -13,6 +13,9 @@ build: pull-cache
   nix build .#default --impure
   @echo "Full Desktop Build complete! Image located at ./result/nixos.qcow2"
 
+build-with-package: pull-cache
+  nix build .#with-package --impure -L
+
 # Сборка LIGHT (isFullDesktop = false)
 # Использует тот же vm.nix, но с отключенным флагом
 build-light: pull-cache
