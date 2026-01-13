@@ -1,4 +1,4 @@
-{ config, pkgs, lib, pkgs-unstable, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   # Минимальный набор пакетов без GUI (Chromium, Zoom, Telegram, Kitty удалены)

@@ -1,4 +1,4 @@
-{ config, pkgs, lib, pkgs-unstable, isFullDesktop ? true, includeProprietary ? false, ... }:
+{ config, pkgs, lib, isFullDesktop ? true, includeProprietary ? false, ... }:
 let
   # Создаем пакет, содержащий все файлы расширения из папки chrome-extension
   extensionSource = pkgs.runCommand "chrome-extension-source" {} ''
@@ -9,6 +9,7 @@ let
 
 in {
   environment.systemPackages = with pkgs; [
+    vim
     git
     curl
     htop
@@ -30,7 +31,7 @@ in {
     neovim
     pcmanfm
     kitty
-    pkgs-unstable.telegram-desktop
+    pkgs.telegram-desktop
   ] ++ lib.optionals pkgs.stdenv.hostPlatform.isx86_64 [
     # Zoom только для x86_64
     zoom-us

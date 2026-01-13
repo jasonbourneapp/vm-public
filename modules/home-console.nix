@@ -1,4 +1,4 @@
-{ config, pkgs, lib, pkgs-unstable, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   # Исключаем пакет gnome-tour из системы (на всякий случай)
@@ -7,8 +7,7 @@
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
   home-manager.extraSpecialArgs = {
-    inherit pkgs-unstable;
-    pkgs-master = pkgs-unstable;
+    pkgs-master = pkgs;
   };
 
   home-manager.users.user = { lib, ... }: {

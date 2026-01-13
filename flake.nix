@@ -3,8 +3,6 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
-    # nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-25.11";
     nixos-generators = {
       url = "github:nix-community/nixos-generators";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -15,17 +13,12 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, nixos-generators, ... }@inputs:
+  outputs = { self, nixpkgs, nixos-generators, ... }@inputs:
     let
       supportedSystems = [ "x86_64-linux" "aarch64-linux" ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
       mkPkgs = system: import nixpkgs {
-        inherit system;
-        config.allowUnfree = true;
-      };
-
-      mkPkgsUnstable = system: import nixpkgs-unstable {
         inherit system;
         config.allowUnfree = true;
       };
@@ -147,7 +140,6 @@
     {
       packages = forAllSystems (system: let
         pkgs = mkPkgs system;
-        pkgs-unstable = mkPkgsUnstable system;
       in {
         # === FULL DESKTOP IMAGE (build) ===
         default = nixos-generators.nixosGenerate {
@@ -164,7 +156,7 @@
           # isFullDesktop = true (Heavy apps)
           # includeProprietary = true (JasonBourne/Mutter)
           specialArgs = {
-            inherit inputs pkgs-unstable;
+            inherit inputs;
             isFullDesktop = true;
             includeProprietary = true;
           };
@@ -186,7 +178,7 @@
           # isFullDesktop = false
           # includeProprietary = false
           specialArgs = {
-            inherit inputs pkgs-unstable;
+            inherit inputs;
             isFullDesktop = false;
             includeProprietary = false;
           };
@@ -208,7 +200,7 @@
           # isFullDesktop = false (No heavy apps)
           # includeProprietary = true (Yes JasonBourne)
           specialArgs = {
-            inherit inputs pkgs-unstable;
+            inherit inputs;
             isFullDesktop = false;
             includeProprietary = true;
           };
@@ -228,7 +220,7 @@
           ];
 
           specialArgs = {
-            inherit inputs pkgs-unstable;
+            inherit inputs;
             isFullDesktop = false;
             includeProprietary = false;
           };
@@ -249,7 +241,6 @@
           pkgs = mkPkgs "x86_64-linux";
           specialArgs = {
             inherit inputs;
-            pkgs-unstable = mkPkgsUnstable "x86_64-linux";
             isFullDesktop = true;
             includeProprietary = true;
           };
@@ -274,7 +265,6 @@
           pkgs = mkPkgs "x86_64-linux";
           specialArgs = {
             inherit inputs;
-            pkgs-unstable = mkPkgsUnstable "x86_64-linux";
             isFullDesktop = false;
             includeProprietary = false;
           };
@@ -298,7 +288,6 @@
           pkgs = mkPkgs "x86_64-linux";
           specialArgs = {
             inherit inputs;
-            pkgs-unstable = mkPkgsUnstable "x86_64-linux";
             isFullDesktop = false;
             includeProprietary = false;
           };
