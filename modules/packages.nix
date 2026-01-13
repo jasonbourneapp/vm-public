@@ -11,16 +11,12 @@ in {
   environment.systemPackages = with pkgs; [
     vim
     git
-    curl
-    htop
     pavucontrol
     alsa-utils
     pulseaudio
     xdotool
     wmctrl
     gnomeExtensions.window-calls
-    unzip
-    zip
     just
     direnv
     # Базовые пакеты всегда нужны, terminfo для корректной работы ssh
@@ -28,6 +24,10 @@ in {
   ]
   # Пакеты, которые устанавливаются только если isFullDesktop = true (Тяжелый софт)
   ++ lib.optionals isFullDesktop ([
+    unzip
+    zip
+    curl
+    htop
     neovim
     pcmanfm
     kitty

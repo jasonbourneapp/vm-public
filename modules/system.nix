@@ -156,8 +156,18 @@ in
   systemd.targets.hibernate.enable = false;
   systemd.targets.hybrid-sleep.enable = false;
 
-  documentation.enable = false;
-  documentation.nixos.enable = false;
+  documentation = {
+    enable = false;
+    nixos.enable = false;
+    man.enable = false;
+    info.enable = false;
+    doc.enable = false;
+  };
+
+  nix.optimise.automatic = true;
+
+  # Удалить ненужные локали
+  i18n.supportedLocales = [ "en_US.UTF-8/UTF-8" "ru_RU.UTF-8/UTF-8" ];
 
   # === КОПИРОВАНИЕ КОНФИГОВ В /etc/nixos ===
   # Используем system.activationScripts для начальной инициализации (Provisioning).

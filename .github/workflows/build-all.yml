@@ -82,26 +82,16 @@ jobs:
           # 1. Собираем with-package (Light + Proprietary).
           nix build .#packages.${{ matrix.system }}.with-package -L --impure
 
-          # 2. Создаем папку для артефактов
-          mkdir -p artifacts
-
-          # 3. Конвертируем со сжатием (-c).
-          # Используем 'nix shell nixpkgs#qemu-utils', чтобы точно иметь qemu-img под рукой
-          # без необходимости делать apt install.
-          # result/*.qcow2 берется как источник, и сразу пишем в artifacts с нужным именем.
-          cp result/*.qcow2 artifacts/nixos-${{ matrix.arch }}.qcow2
-
-          # nix shell nixpkgs#qemu-utils -c qemu-img convert \
-          #   -p \
-          #   -O qcow2 \
-          #   -c \
-          #   result/*.qcow2 \
-          #   artifacts/nixos-${{ matrix.arch }}.qcow2
+      - name: Build QCOW2 Image
+        # Собираем. Появится симлинк result -> /nix/store/...
+        run: nix build .#packages.${{ matrix.system }}.with-package -L --impure
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: nixos-image-${{ matrix.arch }}
-          path: artifacts/
+          # Указываем путь через result.
+          # result — это папка (симлинк), внутри лежит файл .qcow2
+          path: result/*.qcow2
           if-no-files-found: error
           retention-days: 1

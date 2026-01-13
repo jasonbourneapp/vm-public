@@ -146,7 +146,12 @@
           inherit pkgs;
           format = "qcow";
 
-          diskSize = 6144;
+          imageConfig = {
+            # Это заставит qemu-img использовать сжатие (-c) при создании
+            qemu = {
+              qemu-img-opts = "-c";
+            };
+          };
 
           modules = [
             inputs.home-manager.nixosModules.home-manager
