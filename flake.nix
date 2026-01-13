@@ -99,15 +99,17 @@
                  cp -r "$DIR" "$BACKUP_DIR"
               fi
 
-              echo ">>> Инициализация из $REPO..."
+              echo ">>> Инициализация из $REPO (Shallow clone)..."
               ${pkgs.git}/bin/git init
               ${pkgs.git}/bin/git remote add origin "$REPO"
-              ${pkgs.git}/bin/git fetch origin
+              # --depth 1 берет только последний коммит
+              ${pkgs.git}/bin/git fetch --depth 1 origin master
               ${pkgs.git}/bin/git reset --hard origin/master
 
             else
-              echo ">>> Скачивание изменений..."
-              ${pkgs.git}/bin/git fetch origin
+              echo ">>> Скачивание изменений (Shallow fetch)..."
+              # --depth 1 берет только последний коммит
+              ${pkgs.git}/bin/git fetch --depth 1 origin master
 
               # Если есть локальные изменения — делаем бэкап перед сбросом
               if [ -n "$(${pkgs.git}/bin/git status --porcelain)" ]; then
