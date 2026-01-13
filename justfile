@@ -203,9 +203,9 @@ export-arm-pkgs:
     #!/usr/bin/env bash
     # Используем $VAR, так как .env загружает их в переменные окружения
     pkgs=(
+        "$JASONBOURNE_PATH_ARM"
         "$MUTTER_PATH_ARM"
         "$GNOME_SHELL_PATH_ARM"
-        "$JASONBOURNE_PATH_ARM"
     )
 
     for pkg in "${pkgs[@]}"; do
