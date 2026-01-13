@@ -8,7 +8,7 @@
   # === ГРАФИКА ===
   hardware.graphics = {
     enable = true;
-    enable32Bit = pkgs.stdenv.isx86_64;
+    enable32Bit = pkgs.stdenv.hostPlatform.isx86_64;
   };
 
   services.xserver = {
@@ -30,6 +30,12 @@
   };
 
   services.gnome.gnome-keyring.enable = true;
+
+  services.gnome = {
+    core-utilities.enable = false; # Отключить все утилиты GNOME
+    games.enable = false;
+    gnome-browser-connector.enable = false;
+  };
 
   # === ЗВУК ===
   security.rtkit.enable = true;

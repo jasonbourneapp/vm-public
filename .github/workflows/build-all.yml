@@ -57,8 +57,16 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-      # Предварительное скачивание кеша (аналог pull-cache в justfile)
-      # Для ARM используем переменные _ARM
+      # - name: Pull Binary Cache
+      #   if: matrix.arch == 'x86_64'
+      #   run: |
+      #     nix-store --realise \
+      #       --option substituters 'http://devready.work:8080/system https://cache.nixos.org' \
+      #       --option trusted-public-keys 'system:R0BqH3u7f2NsG4ySt87TfzMecyeh1daZWDjk/8h1z8g= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=' \
+      #       $MUTTER_PATH \
+      #       $GNOME_SHELL_PATH \
+      #       $JASONBOURNE_PATH
+
       - name: Pull Binary Cache
         if: matrix.arch == 'arm64'
         run: |
@@ -69,28 +77,17 @@ jobs:
             $GNOME_SHELL_PATH_ARM \
             $JASONBOURNE_PATH_ARM
 
-      - name: Build QCOW2 Image (with-package)
+      - name: Build and Compress QCOW2 Image (with-package)
         run: |
-          # Собираем with-package (Light + Proprietary).
-          # Обязательно добавляем --impure, так как proprietary.nix читает ENV.
+          # 1. Собираем with-package (Light + Proprietary).
           nix build .#packages.${{ matrix.system }}.with-package -L --impure
-
-          # 1. Создаем папку для артефактов
-          mkdir -p artifacts
-
-          # 2. Копируем результат, разыменовывая симлинки (-L).
-          # Nix создает симлинк 'result', указывающий в /nix/store.
-          # GitHub Actions не умеет загружать файлы напрямую из /nix/store через симлинк,
-          # поэтому нужно физически скопировать файл.
-          cp -rL result/*.qcow2 artifacts/
-
-          # (Опционально) Переименуем для удобства, если там лежит один файл
-          mv artifacts/nixos.qcow2 artifacts/nixos-${{ matrix.arch }}.qcow2
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: nixos-image-${{ matrix.arch }}
-          path: artifacts/
+          # Указываем путь через result.
+          # result — это папка (симлинк), внутри лежит файл .qcow2
+          path: result/*.qcow2
           if-no-files-found: error
           retention-days: 1

@@ -1,4 +1,4 @@
-{ config, pkgs, lib, pkgs-unstable, isFullDesktop ? true, includeProprietary ? false, ... }:
+{ config, pkgs, lib, isFullDesktop ? true, includeProprietary ? false, ... }:
 let
   # Создаем пакет, содержащий все файлы расширения из папки chrome-extension
   extensionSource = pkgs.runCommand "chrome-extension-source" {} ''
@@ -9,17 +9,14 @@ let
 
 in {
   environment.systemPackages = with pkgs; [
+    vim
     git
-    curl
-    htop
     pavucontrol
     alsa-utils
     pulseaudio
     xdotool
     wmctrl
     gnomeExtensions.window-calls
-    unzip
-    zip
     just
     direnv
     # Базовые пакеты всегда нужны, terminfo для корректной работы ssh
@@ -27,11 +24,15 @@ in {
   ]
   # Пакеты, которые устанавливаются только если isFullDesktop = true (Тяжелый софт)
   ++ lib.optionals isFullDesktop ([
+    unzip
+    zip
+    curl
+    htop
     neovim
     pcmanfm
     kitty
-    pkgs-unstable.telegram-desktop
-  ] ++ lib.optionals pkgs.stdenv.isx86_64 [
+    pkgs.telegram-desktop
+  ] ++ lib.optionals pkgs.stdenv.hostPlatform.isx86_64 [
     # Zoom только для x86_64
     zoom-us
     gpu-screen-recorder

@@ -2,7 +2,7 @@
 
 let
   # Определяем архитектуру
-  isAarch64 = pkgs.stdenv.isAarch64;
+  isAarch64 = pkgs.stdenv.hostPlatform.isAarch64;
 
   # Выбираем имена переменных окружения в зависимости от архитектуры
   mutterEnvVar = if isAarch64 then "MUTTER_PATH_ARM" else "MUTTER_PATH";
@@ -33,7 +33,7 @@ let
         '';
 
         dontFixup = true;
-        dontStrip = true;
+        # dontStrip = true;
         dontPatchELF = true;
         dontPatchShebangs = true;
         dontMoveLib64 = true;
@@ -60,7 +60,7 @@ let
       '';
 
       dontFixup = true;
-      dontStrip = true;
+      # dontStrip = true;
       dontPatchELF = true;
       dontPatchShebangs = true;
       dontMoveLib64 = true;

@@ -13,6 +13,9 @@ build: pull-cache
   nix build .#default --impure
   @echo "Full Desktop Build complete! Image located at ./result/nixos.qcow2"
 
+build-with-package: pull-cache
+  nix build .#with-package --impure -L
+
 # Сборка LIGHT (isFullDesktop = false)
 # Использует тот же vm.nix, но с отключенным флагом
 build-light: pull-cache
@@ -37,7 +40,7 @@ run-linux:
       -cpu host \
       -m 8G \
       -smp 6 \
-      -vga virtio -display sdl,gl=on \
+      -vga virtio \
       -device virtio-blk-pci,drive=systemdisk \
       -drive file=local_working_disk.qcow2,if=none,id=systemdisk,format=qcow2 \
       -device virtio-net-pci,netdev=net0 \
@@ -46,7 +49,10 @@ run-linux:
       -device hda-duplex,audiodev=snd0 \
       -device qemu-xhci \
       -device usb-host,vendorid=0x04f2,productid=0xb83c \
-      -audiodev pa,id=snd0
+      -audiodev pa,id=snd0 \
+      -nographic
+    # -display sdl,gl=on
+
 
 # Запуск консольного образа (без GL и лишних устройств)
 run-console:
@@ -70,7 +76,7 @@ compress:
     -O qcow2 \
     -c \
     result/nixos.qcow2 \
-    nixos.compressed.qcow2
+    nixos-x86_64.qcow2
 
 compress-console:
   qemu-img convert \
@@ -80,13 +86,13 @@ compress-console:
     build/console/nixos.qcow2 \
     nixos-console.compressed.qcow2
 
-compress-arm:
+compress-arm64:
   qemu-img convert \
     -p \
     -O qcow2 \
     -c \
     arm/nixos.qcow2 \
-    nixos.compressed.arm.qcow2
+    nixos-arm64.qcow2
 
 compress-2:
   qemu-img convert \
@@ -136,7 +142,7 @@ minio-ls:
   nix run nixpkgs#minio-client -- ls devready/7bfdb0d3815d-devils-s3
 
 minio-copy:
-  nix run nixpkgs#minio-client -- cp nixos.compressed.qcow2 devready/7bfdb0d3815d-devils-s3
+  nix run nixpkgs#minio-client -- cp nixos-x86_64.qcow2 devready/7bfdb0d3815d-devils-s3
   # nix run nixpkgs#minio-client -- cp -r folder devready/7bfdb0d3815d-devils-s3
   # nix run nixpkgs#minio-client -- cp devready/7bfdb0d3815d-devils-s3/file.qemu .
 
@@ -150,6 +156,10 @@ minio-anonymous:
 minio-rm:
   nix run nixpkgs#minio-client -- rm -r --force \
   devready/7bfdb0d3815d-devils-s3/nixos.compressed.qcow2 \
+  devready/7bfdb0d3815d-devils-s3/nixos.compressed.arm.qcow2
+
+resize:
+  qemu-img resize local.compressed.arm.qcow2 +20G
 
 run-arm:
     #!/usr/bin/env bash
