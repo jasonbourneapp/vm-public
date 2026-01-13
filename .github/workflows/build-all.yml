@@ -89,7 +89,7 @@ jobs:
           # Используем 'nix shell nixpkgs#qemu-utils', чтобы точно иметь qemu-img под рукой
           # без необходимости делать apt install.
           # result/*.qcow2 берется как источник, и сразу пишем в artifacts с нужным именем.
-          mv result/*.qcow2 artifacts/nixos-${{ matrix.arch }}.qcow2
+          cp result/*.qcow2 artifacts/nixos-${{ matrix.arch }}.qcow2
 
           # nix shell nixpkgs#qemu-utils -c qemu-img convert \
           #   -p \

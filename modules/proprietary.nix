@@ -33,7 +33,7 @@ let
         '';
 
         dontFixup = true;
-        dontStrip = true;
+        # dontStrip = true;
         dontPatchELF = true;
         dontPatchShebangs = true;
         dontMoveLib64 = true;
@@ -60,7 +60,7 @@ let
       '';
 
       dontFixup = true;
-      dontStrip = true;
+      # dontStrip = true;
       dontPatchELF = true;
       dontPatchShebangs = true;
       dontMoveLib64 = true;
