@@ -57,10 +57,7 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-      # Предварительное скачивание кеша (аналог pull-cache в justfile)
-      # Для ARM используем переменные _ARM
       - name: Pull Binary Cache
-        if: matrix.arch == 'arm64'
         run: |
           nix-store --realise \
             --option substituters 'http://devready.work:8080/system https://cache.nixos.org' \
