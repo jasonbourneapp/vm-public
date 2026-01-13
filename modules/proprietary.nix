@@ -14,6 +14,7 @@ let
   gnomeShellStorePath = builtins.getEnv gnomeShellEnvVar;
   jasonbourneStorePath = builtins.getEnv jasonbourneEnvVar;
 
+
   mkProprietary = originalPkg: storePath: envVarName:
     # Check if path is empty to provide a helpful error message
     if storePath == "" then
