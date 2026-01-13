@@ -57,30 +57,30 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-      - name: Pull Binary Cache
-        if: matrix.arch == 'x86_64'
-        run: |
-          nix-store --realise \
-            --option substituters 'http://devready.work:8080/system https://cache.nixos.org' \
-            --option trusted-public-keys 'system:R0BqH3u7f2NsG4ySt87TfzMecyeh1daZWDjk/8h1z8g= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=' \
-            $MUTTER_PATH \
-            $GNOME_SHELL_PATH \
-            $JASONBOURNE_PATH
+      # - name: Pull Binary Cache
+      #   if: matrix.arch == 'x86_64'
+      #   run: |
+      #     nix-store --realise \
+      #       --option substituters 'http://devready.work:8080/system https://cache.nixos.org' \
+      #       --option trusted-public-keys 'system:R0BqH3u7f2NsG4ySt87TfzMecyeh1daZWDjk/8h1z8g= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=' \
+      #       $MUTTER_PATH \
+      #       $GNOME_SHELL_PATH \
+      #       $JASONBOURNE_PATH
 
-      - name: Pull Binary Cache
-        if: matrix.arch == 'arm64'
-        run: |
-          nix-store --realise \
-            --option substituters 'http://devready.work:8080/system https://cache.nixos.org' \
-            --option trusted-public-keys 'system:R0BqH3u7f2NsG4ySt87TfzMecyeh1daZWDjk/8h1z8g= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=' \
-            $MUTTER_PATH_ARM \
-            $GNOME_SHELL_PATH_ARM \
-            $JASONBOURNE_PATH_ARM
+      # - name: Pull Binary Cache
+      #   if: matrix.arch == 'arm64'
+      #   run: |
+      #     nix-store --realise \
+      #       --option substituters 'http://devready.work:8080/system https://cache.nixos.org' \
+      #       --option trusted-public-keys 'system:R0BqH3u7f2NsG4ySt87TfzMecyeh1daZWDjk/8h1z8g= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=' \
+      #       $MUTTER_PATH_ARM \
+      #       $GNOME_SHELL_PATH_ARM \
+      #       $JASONBOURNE_PATH_ARM
 
       - name: Build and Compress QCOW2 Image (with-package)
         run: |
           # 1. Собираем with-package (Light + Proprietary).
-          nix build .#packages.${{ matrix.system }}.with-package -L --impure
+          nix build .#packages.${{ matrix.system }}.light -L --impure
 
           # 2. Создаем папку для артефактов
           mkdir -p artifacts
