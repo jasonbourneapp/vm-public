@@ -146,6 +146,8 @@
           inherit pkgs;
           format = "qcow";
 
+          diskSize = 6144;
+
           modules = [
             inputs.home-manager.nixosModules.home-manager
             ./vm.nix

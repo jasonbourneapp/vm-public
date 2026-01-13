@@ -80,7 +80,7 @@ jobs:
       - name: Build and Compress QCOW2 Image (with-package)
         run: |
           # 1. Собираем with-package (Light + Proprietary).
-          nix build .#packages.${{ matrix.system }}.light -L --impure
+          nix build .#packages.${{ matrix.system }}.with-package -L --impure
 
           # 2. Создаем папку для артефактов
           mkdir -p artifacts

@@ -156,6 +156,9 @@ in
   systemd.targets.hibernate.enable = false;
   systemd.targets.hybrid-sleep.enable = false;
 
+  documentation.enable = false;
+  documentation.nixos.enable = false;
+
   # === КОПИРОВАНИЕ КОНФИГОВ В /etc/nixos ===
   # Используем system.activationScripts для начальной инициализации (Provisioning).
   # Это позволяет создать изменяемые (writable) файлы, в отличие от environment.etc.

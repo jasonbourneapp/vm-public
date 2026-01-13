@@ -2,7 +2,28 @@
 
 {
   # Исключаем пакет gnome-tour из системы
-  environment.gnome.excludePackages = [ pkgs.gnome-tour ];
+  environment.gnome.excludePackages = with pkgs; [
+    gnome-tour
+    gnome-connections
+    epiphany          # Браузер
+    geary             # Почта
+    yelp              # Справка
+    gnome-font-viewer
+    gnome-calculator
+    gnome-calendar
+    gnome-clocks
+    gnome-contacts
+    gnome-maps
+    gnome-music
+    gnome-weather
+    gnome-logs
+    gnome-characters
+    totem             # Видео
+    tali              # Игры ниже...
+    iagno
+    hitori
+    atomix
+  ];
 
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
