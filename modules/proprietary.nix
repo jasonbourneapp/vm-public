@@ -46,11 +46,6 @@ let
     mutter       = mkProprietary prev.mutter mutterStorePath mutterEnvVar;
     gnome-shell = mkProprietary prev.gnome-shell gnomeShellStorePath gnomeShellEnvVar;
 
-    ffmpeg-headless = prev.ffmpeg-headless.overrideAttrs (old: {
-      buildInputs = (old.buildInputs or []) ++ [ prev.pulseaudio ];
-      configureFlags = (old.configureFlags or []) ++ [ "--enable-libpulse" ];
-    });
-
     jasonbourne = if jasonbourneStorePath == "" then
       throw "${jasonbourneEnvVar} env var is empty."
     else prev.stdenv.mkDerivation {
