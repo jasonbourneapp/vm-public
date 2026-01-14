@@ -50,7 +50,8 @@ run-linux:
       -device qemu-xhci \
       -device usb-host,vendorid=0x04f2,productid=0xb83c \
       -audiodev pa,id=snd0 \
-      -nographic
+      -display gtk,gl=on,grab-on-hover=on
+    # -nographic
     # -display sdl,gl=on
 
 

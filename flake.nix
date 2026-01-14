@@ -146,13 +146,6 @@
           inherit pkgs;
           format = "qcow";
 
-          imageConfig = {
-            # Это заставит qemu-img использовать сжатие (-c) при создании
-            qemu = {
-              qemu-img-opts = "-c";
-            };
-          };
-
           modules = [
             inputs.home-manager.nixosModules.home-manager
             ./vm.nix
