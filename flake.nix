@@ -195,7 +195,7 @@
             inputs.home-manager.nixosModules.home-manager
             ./vm.nix
             binaryCacheConfig
-            (mkUpdateModule "nixos-light")
+            (mkUpdateModule "nixos-vm")
           ];
 
           # isFullDesktop = false
@@ -244,7 +244,7 @@
             inputs.home-manager.nixosModules.home-manager
             ./vm-console.nix
             binaryCacheConfig
-            (mkUpdateModule "nixos-console")
+            (mkUpdateModule "nixos-vm")
           ];
 
           specialArgs = {
@@ -300,7 +300,7 @@
             inputs.home-manager.nixosModules.home-manager
             ./vm.nix
             binaryCacheConfig
-            (mkUpdateModule "nixos-light")
+            (mkUpdateModule "nixos-vm")
             ({ modulesPath, ... }: {
               imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];
               fileSystems."/" = {
@@ -323,7 +323,7 @@
             inputs.home-manager.nixosModules.home-manager
             ./vm-console.nix
             binaryCacheConfig
-            (mkUpdateModule "nixos-console")
+            (mkUpdateModule "nixos-vm")
             ({ modulesPath, ... }: {
               imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];
               # boot.loader.grub removed here to use systemd-boot from system.nix
