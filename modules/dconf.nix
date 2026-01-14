@@ -1,5 +1,12 @@
-{pkgs, ...}: {
+{pkgs,lib, ...}: {
   dconf.settings = {
+    "org/gnome/desktop/input-sources" = {
+      sources = [
+        (lib.hm.gvariant.mkTuple [ "xkb" "us" ])
+        (lib.hm.gvariant.mkTuple [ "xkb" "ru" ])
+      ];
+      xkb-options = [ "grp:ctrl_shift_toggle" ];
+    };
     "org/gnome/settings-daemon/plugins/media-keys" = {
       custom-keybindings = [
         "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"

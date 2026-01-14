@@ -22,6 +22,10 @@ in {
     # Базовые пакеты всегда нужны, terminfo для корректной работы ssh
     kitty.terminfo
   ]
+  # ++ lib.optionals (pkgs.stdenv.hostPlatform.isx86_64 && !isFullDesktop) [
+  #   kitty
+  #   htop
+  # ]
   # Пакеты, которые устанавливаются только если isFullDesktop = true (Тяжелый софт)
   ++ lib.optionals isFullDesktop ([
     unzip

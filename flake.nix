@@ -136,6 +136,29 @@
         ];
       });
 
+      formatQcowCompressed = { config, lib, pkgs, modulesPath, ... }: {
+        imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];
+
+        # Указываем генератору, какой атрибут забирать как результат
+        formatAttr = "qcow-compressed";
+
+        # === ВОТ ЭТОГО НЕ ХВАТАЛО ===
+        # Мы должны сообщить конфигурации NixOS, где будет ее корень.
+        # make-disk-image.nix создаст раздел с меткой "nixos", поэтому мы ссылаемся на него.
+        fileSystems."/" = {
+          device = "/dev/disk/by-label/nixos";
+          fsType = "ext4";
+          autoResize = true;
+        };
+
+        # Сама сборка образа
+        system.build.qcow-compressed = import (modulesPath + "/../lib/make-disk-image.nix") {
+          inherit lib config pkgs;
+          format = "qcow2-compressed";
+          # diskSize = "auto"; # Можно раскомментировать, если нужно авто-расширение под контент
+        };
+      };
+
     in
     {
       packages = forAllSystems (system: let
@@ -145,13 +168,6 @@
         default = nixos-generators.nixosGenerate {
           inherit pkgs;
           format = "qcow";
-
-          imageConfig = {
-            # Это заставит qemu-img использовать сжатие (-c) при создании
-            qemu = {
-              qemu-img-opts = "-c";
-            };
-          };
 
           modules = [
             inputs.home-manager.nixosModules.home-manager
@@ -195,7 +211,12 @@
         # Основан на Light (без тяжелых приложений), но с proprietary.nix и jasonbourne
         with-package = nixos-generators.nixosGenerate {
           inherit pkgs;
+
           format = "qcow";
+          # format = "qcow-compressed";
+          # customFormats = {
+          #   "qcow-compressed" = formatQcowCompressed;
+          # };
 
           modules = [
             inputs.home-manager.nixosModules.home-manager
