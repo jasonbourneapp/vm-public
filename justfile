@@ -160,6 +160,7 @@ minio-ls:
 minio-copy:
   nix run nixpkgs#minio-client -- cp nixos-arm64.qcow2 devready/7bfdb0d3815d-devils-s3
   nix run nixpkgs#minio-client -- cp nixos-x86_64.qcow2 devready/7bfdb0d3815d-devils-s3
+  nix run nixpkgs#minio-client -- cp result/nixos-image-virtualbox-25.11.20260110.d030887-x86_64-linux.ova devready/7bfdb0d3815d-devils-s3
   # nix run nixpkgs#minio-client -- cp -r folder devready/7bfdb0d3815d-devils-s3
   # nix run nixpkgs#minio-client -- cp devready/7bfdb0d3815d-devils-s3/file.qemu .
 
