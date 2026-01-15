@@ -135,6 +135,10 @@ nixupdate: pull-cache
   sudo --preserve-env=MUTTER_PATH,GNOME_SHELL_PATH,JASONBOURNE_PATH,MUTTER_PATH_ARM,GNOME_SHELL_PATH_ARM,JASONBOURNE_PATH_ARM \
     nixos-rebuild switch --flake /etc/nixos#nixos-vm --impure
 
+live-cd-update:
+  sudo --preserve-env=MUTTER_PATH,GNOME_SHELL_PATH,JASONBOURNE_PATH \
+    nixos-rebuild test --flake /etc/nixos#nixos-vm --impure
+
 nixupdate-console:
   sudo nixos-rebuild switch --flake /etc/nixos#nixos-console --impure
 
