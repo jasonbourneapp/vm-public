@@ -8,10 +8,16 @@ pull-cache:
     $GNOME_SHELL_PATH \
     $JASONBOURNE_PATH
 
-# Сборка FULL DESKTOP (isFullDesktop = true)
+# Сборка FULL DESKTOP (isFullDesktop = true) для QEMU/KVM
 build: pull-cache
   nix build .#default --impure
   @echo "Full Desktop Build complete! Image located at ./result/nixos.qcow2"
+
+# Сборка для VirtualBox (OVA)
+# Исправлено переопределение GRUB и добавлены Guest Additions
+build-vbox: pull-cache
+  nix build .#vbox --impure
+  @echo "VirtualBox Build complete! OVA image located at ./result/*.ova"
 
 build-with-package: pull-cache
   nix build .#with-package --impure -L
@@ -26,6 +32,11 @@ build-light: pull-cache
 build-console:
   nix build .#console --impure --out-link ./build/console
   @echo "Build complete! Console image located at ./build/console/nixos.qcow2"
+
+# Сборка ISO (Live Installer)
+build-iso: pull-cache
+  nix build .#iso --impure
+  @echo "ISO Build complete! Image located at ./result/iso/*.iso"
 
 # Очистка старых билдов
 clean:
@@ -123,6 +134,10 @@ nixupdate: pull-cache
   # Добавлены _ARM версии переменных
   sudo --preserve-env=MUTTER_PATH,GNOME_SHELL_PATH,JASONBOURNE_PATH,MUTTER_PATH_ARM,GNOME_SHELL_PATH_ARM,JASONBOURNE_PATH_ARM \
     nixos-rebuild switch --flake /etc/nixos#nixos-vm --impure
+
+live-cd-update:
+  sudo --preserve-env=MUTTER_PATH,GNOME_SHELL_PATH,JASONBOURNE_PATH \
+    nixos-rebuild test --flake /etc/nixos#nixos-vm --impure
 
 nixupdate-console:
   sudo nixos-rebuild switch --flake /etc/nixos#nixos-console --impure

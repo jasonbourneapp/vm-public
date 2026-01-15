@@ -21,6 +21,7 @@ in {
     direnv
     # Базовые пакеты всегда нужны, terminfo для корректной работы ssh
     kitty.terminfo
+    xclip
   ]
   ++ lib.optionals (pkgs.stdenv.hostPlatform.isx86_64 && !isFullDesktop) [
     kitty

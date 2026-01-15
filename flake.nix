@@ -1,5 +1,5 @@
 {
-  description = "NixOS QEMU images (Proprietary/Binary Build)";
+  description = "NixOS QEMU and VirtualBox images (Proprietary/Binary Build)";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
@@ -41,11 +41,7 @@
       };
 
       # === МОДУЛЬ ОБНОВЛЕНИЯ ===
-      # Генерирует скрипт update, который подтягивает конфиг из git
-      # и пересобирает систему.
       mkUpdateModule = targetFlake: ({ pkgs, ... }: {
-
-        # РЕШЕНИЕ ПРОБЛЕМЫ "dubious ownership":
         programs.git = {
           enable = true;
           config.safe.directory = [ "/etc/nixos" ];
@@ -55,109 +51,45 @@
           pkgs.git
           (pkgs.writeShellScriptBin "update" ''
             set -e
-
-            # === ПРОВЕРКА ПРАВ ROOT ===
-            # Используем id -u, так как это работает в любой оболочке (sh/bash/zsh)
             if [ "$(id -u)" -ne 0 ]; then
-               echo "----------------------------------------------------------------"
-               echo "ОШИБКА: У вас нет прав для выполнения обновления!"
-               echo "Пожалуйста, запустите эту команду через sudo:"
-               echo ""
-               echo "    sudo update"
-               echo "----------------------------------------------------------------"
+               echo "ОШИБКА: Запустите через sudo update"
                exit 1
             fi
-
             REPO="https://github.com/jasonbourneapp/vm-public.git"
             DIR="/etc/nixos"
             TIMESTAMP=$(date +%Y%m%d-%H%M%S)
             BACKUP_DIR="/etc/nixos-$TIMESTAMP"
 
-            echo "======================================================="
-            echo ">>> JasonBourne VM Update Tool"
-            echo ">>> Цель: ${targetFlake}"
-            echo "======================================================="
-
+            echo ">>> JasonBourne VM Update Tool (Target: ${targetFlake})"
             mkdir -p "$DIR"
             cd "$DIR"
-
-            # Разрешаем git в текущей сессии
             ${pkgs.git}/bin/git config --global --add safe.directory "$DIR" || true
 
-            # 1. Проверка Git и создание бэкапов
             if [ ! -d ".git" ]; then
-              # Если папка не пуста и не git — делаем бэкап
               if [ "$(ls -A "$DIR")" ]; then
-                 echo ">>> Папка содержит файлы, но не является git-репозиторием."
-                 echo ">>> Создание бэкапа в $BACKUP_DIR..."
                  cp -r "$DIR" "$BACKUP_DIR"
               fi
-
-              echo ">>> Инициализация из $REPO (Shallow clone)..."
               ${pkgs.git}/bin/git init
               ${pkgs.git}/bin/git remote add origin "$REPO"
-              # --depth 1 берет только последний коммит
               ${pkgs.git}/bin/git fetch --depth 1 origin master
               ${pkgs.git}/bin/git reset --hard origin/master
-
             else
-              echo ">>> Скачивание изменений (Shallow fetch)..."
-              # --depth 1 берет только последний коммит
               ${pkgs.git}/bin/git fetch --depth 1 origin master
-
-              # Если есть локальные изменения — делаем бэкап перед сбросом
               if [ -n "$(${pkgs.git}/bin/git status --porcelain)" ]; then
-                 echo ">>> Обнаружены локальные изменения."
-                 echo ">>> Создание бэкапа в $BACKUP_DIR..."
                  cp -r "$DIR" "$BACKUP_DIR"
               fi
-
               ${pkgs.git}/bin/git reset --hard origin/master
             fi
 
-            # 2. Загрузка переменных окружения с явным экспортом
             if [ -f ".env" ]; then
-              echo ">>> Загрузка конфигурации из .env..."
-              # Экспортируем все переменные из .env
               export $(grep -v '^#' .env | xargs)
             fi
 
-            # 3. Пересборка системы
-            echo ">>> Запуск пересборки системы (NixOS Rebuild)..."
-            # Используем --impure для доступа к переменным и --show-trace для деталей ошибок
             nixos-rebuild switch --flake .#${targetFlake} --impure --show-trace
-
-            echo "======================================================="
-            echo ">>> Обновление успешно завершено!"
-            echo ">>> Для применения изменений ядра или драйверов перезагрузитесь:"
-            echo ">>> sudo reboot"
-            echo "======================================================="
+            echo ">>> Обновление завершено!"
           '')
         ];
       });
-
-      formatQcowCompressed = { config, lib, pkgs, modulesPath, ... }: {
-        imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];
-
-        # Указываем генератору, какой атрибут забирать как результат
-        formatAttr = "qcow-compressed";
-
-        # === ВОТ ЭТОГО НЕ ХВАТАЛО ===
-        # Мы должны сообщить конфигурации NixOS, где будет ее корень.
-        # make-disk-image.nix создаст раздел с меткой "nixos", поэтому мы ссылаемся на него.
-        fileSystems."/" = {
-          device = "/dev/disk/by-label/nixos";
-          fsType = "ext4";
-          autoResize = true;
-        };
-
-        # Сама сборка образа
-        system.build.qcow-compressed = import (modulesPath + "/../lib/make-disk-image.nix") {
-          inherit lib config pkgs;
-          format = "qcow2-compressed";
-          # diskSize = "auto"; # Можно раскомментировать, если нужно авто-расширение под контент
-        };
-      };
 
     in
     {
@@ -175,18 +107,42 @@
             binaryCacheConfig
             (mkUpdateModule "nixos-vm")
           ];
-
-          # isFullDesktop = true (Heavy apps)
-          # includeProprietary = true (JasonBourne/Mutter)
           specialArgs = {
             inherit inputs;
             isFullDesktop = true;
             includeProprietary = true;
+            isVirtualBox = false; # Явно указываем false
+          };
+        };
+
+        # === VIRTUALBOX IMAGE (build-vbox) ===
+        vbox = nixos-generators.nixosGenerate {
+          inherit pkgs;
+          format = "virtualbox";
+
+          modules = [
+            inputs.home-manager.nixosModules.home-manager
+            ./vm.nix
+            binaryCacheConfig
+            (mkUpdateModule "nixos-vm")
+
+            # СПЕЦИФИЧНЫЕ НАСТРОЙКИ VIRTUALBOX
+            ({ lib, ... }: {
+               # Перебиваем дефолтное значение устройства загрузчика
+               boot.loader.grub.device = lib.mkForce "/dev/sda";
+               virtualisation.diskSize = 51200;
+            })
+          ];
+
+          specialArgs = {
+            inherit inputs;
+            isFullDesktop = true;
+            includeProprietary = true;
+            isVirtualBox = true; # <--- ВОТ ЭТО БЫЛО ПРОПУЩЕНО
           };
         };
 
         # === LIGHT IMAGE (build-light) ===
-        # Использует vm.nix, но все флаги выключены
         light = nixos-generators.nixosGenerate {
           inherit pkgs;
           format = "qcow";
@@ -197,45 +153,33 @@
             binaryCacheConfig
             (mkUpdateModule "nixos-vm")
           ];
-
-          # isFullDesktop = false
-          # includeProprietary = false
           specialArgs = {
             inherit inputs;
             isFullDesktop = false;
             includeProprietary = false;
+            isVirtualBox = false;
           };
         };
 
-        # === WITH PACKAGE IMAGE (New) ===
-        # Основан на Light (без тяжелых приложений), но с proprietary.nix и jasonbourne
+        # === WITH PACKAGE IMAGE ===
         with-package = nixos-generators.nixosGenerate {
           inherit pkgs;
-
           format = "qcow";
-          # format = "qcow-compressed";
-          # customFormats = {
-          #   "qcow-compressed" = formatQcowCompressed;
-          # };
-
           modules = [
             inputs.home-manager.nixosModules.home-manager
             ./vm.nix
             binaryCacheConfig
             (mkUpdateModule "nixos-vm")
           ];
-
-          # isFullDesktop = false (No heavy apps)
-          # includeProprietary = true (Yes JasonBourne)
           specialArgs = {
             inherit inputs;
             isFullDesktop = false;
             includeProprietary = true;
+            isVirtualBox = false;
           };
         };
 
         # === MINIMAL CONSOLE IMAGE (build-console) ===
-        # Использует vm-console.nix
         console = nixos-generators.nixosGenerate {
           inherit pkgs;
           format = "qcow";
@@ -251,6 +195,26 @@
             inherit inputs;
             isFullDesktop = false;
             includeProprietary = false;
+            isVirtualBox = false;
+          };
+        };
+
+        # === ISO INSTALLER IMAGE (build-iso) ===
+        iso = nixos-generators.nixosGenerate {
+          inherit pkgs;
+          format = "install-iso";
+
+          modules = [
+            inputs.home-manager.nixosModules.home-manager
+            ./vm.nix
+            binaryCacheConfig
+            (mkUpdateModule "nixos-vm")
+          ];
+          specialArgs = {
+            inherit inputs;
+            isFullDesktop = true;
+            includeProprietary = true;
+            isVirtualBox = false;
           };
         };
       });
@@ -271,6 +235,7 @@
             inherit inputs;
             isFullDesktop = true;
             includeProprietary = true;
+            isVirtualBox = false;
           };
           modules = [
             inputs.home-manager.nixosModules.home-manager
@@ -279,7 +244,6 @@
             (mkUpdateModule "nixos-vm")
             ({ modulesPath, ... }: {
               imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];
-              # boot.loader.grub removed here to use systemd-boot from system.nix
               fileSystems."/" = {
                 device = "/dev/disk/by-label/nixos";
                 fsType = "ext4";
@@ -295,6 +259,7 @@
             inherit inputs;
             isFullDesktop = false;
             includeProprietary = false;
+            isVirtualBox = false;
           };
           modules = [
             inputs.home-manager.nixosModules.home-manager
@@ -318,6 +283,7 @@
             inherit inputs;
             isFullDesktop = false;
             includeProprietary = false;
+            isVirtualBox = false;
           };
           modules = [
             inputs.home-manager.nixosModules.home-manager
@@ -326,7 +292,6 @@
             (mkUpdateModule "nixos-vm")
             ({ modulesPath, ... }: {
               imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];
-              # boot.loader.grub removed here to use systemd-boot from system.nix
               fileSystems."/" = {
                 device = "/dev/disk/by-label/nixos";
                 fsType = "ext4";
