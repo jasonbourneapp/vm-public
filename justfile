@@ -8,10 +8,16 @@ pull-cache:
     $GNOME_SHELL_PATH \
     $JASONBOURNE_PATH
 
-# Сборка FULL DESKTOP (isFullDesktop = true)
+# Сборка FULL DESKTOP (isFullDesktop = true) для QEMU/KVM
 build: pull-cache
   nix build .#default --impure
   @echo "Full Desktop Build complete! Image located at ./result/nixos.qcow2"
+
+# Сборка для VirtualBox (OVA)
+# Исправлено переопределение GRUB и добавлены Guest Additions
+build-vbox: pull-cache
+  nix build .#vbox --impure
+  @echo "VirtualBox Build complete! OVA image located at ./result/*.ova"
 
 build-with-package: pull-cache
   nix build .#with-package --impure -L

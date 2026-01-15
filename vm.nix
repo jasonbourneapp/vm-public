@@ -1,4 +1,4 @@
-{ config, pkgs, lib, inputs, isFullDesktop ? true, includeProprietary ? false, ... }:
+{ config, pkgs, lib, inputs, isFullDesktop ? true, includeProprietary ? false, isVirtualBox ? false, ... }:
 
 {
   imports = [

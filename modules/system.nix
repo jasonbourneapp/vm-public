@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, isVirtualBox ? false, ... }:
 
 let
   # === ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ (СБОРКА) ===
@@ -118,7 +118,7 @@ in
 
   users.users.user = {
     isNormalUser = true;
-    extraGroups = [ "wheel" "audio" "video" "networkmanager" "docker" "input" ];
+    extraGroups = [ "wheel" "audio" "video" "networkmanager" "docker" "input" "vboxsf" ];
     password = "1";
     shell = pkgs.fish;
   };
@@ -128,12 +128,24 @@ in
   # === ЗАГРУЗЧИК (BOOTLOADER) ===
   boot.loader.grub = {
     enable = pkgs.stdenv.hostPlatform.isx86_64;
-    device = "/dev/vda";
+    # [FIX] Используем lib.mkDefault, чтобы VirtualBox мог переопределить это на /dev/sda
+    # QEMU (по умолчанию) будет использовать vda, а VirtualBox — sda.
+    device = lib.mkDefault "/dev/vda";
     forceInstall = true;
   };
 
   boot.loader.systemd-boot.enable = pkgs.stdenv.hostPlatform.isAarch64;
   boot.loader.efi.canTouchEfiVariables = pkgs.stdenv.hostPlatform.isAarch64;
+
+  # === VIRTUALBOX CONFIGURATION ===
+  # Применяется только если передан флаг isVirtualBox = true (через flake.nix)
+  virtualisation.virtualbox.guest = lib.mkIf isVirtualBox {
+    enable = true;
+    dragAndDrop = true;
+    clipboard = true;
+  };
+
+  services.xserver.videoDrivers = lib.mkIf isVirtualBox [ "virtualbox" "modesetting" ];
 
   # === ЯДРО И SYSTEMD ===
   boot.kernelModules = [ "uvcvideo" ];
@@ -170,21 +182,19 @@ in
   i18n.supportedLocales = [ "en_US.UTF-8/UTF-8" "ru_RU.UTF-8/UTF-8" ];
 
   # === КОПИРОВАНИЕ КОНФИГОВ В /etc/nixos ===
-  # Используем system.activationScripts для начальной инициализации (Provisioning).
-  # Это позволяет создать изменяемые (writable) файлы, в отличие от environment.etc.
   system.activationScripts.populateEtcNixos = lib.stringAfter [ "etc" ] ''
     if [ ! -e /etc/nixos/flake.nix ]; then
       echo "Initializing /etc/nixos from build config..."
       mkdir -p /etc/nixos
 
-      # Копируем структуру файлов (--no-preserve=mode важно, чтобы файлы стали writable)
+      # Копируем структуру файлов
       cp -r --no-preserve=mode ${nixosConfigSources}/* /etc/nixos/
 
       # Копируем сгенерированные файлы
       cp --no-preserve=mode ${justFile} /etc/nixos/justfile
       cp --no-preserve=mode ${envFile} /etc/nixos/.env
 
-      # Исправляем права доступа (делаем доступными для записи)
+      # Исправляем права доступа
       chmod -R u+rwX,go+rX /etc/nixos
       chown -R user:users /etc/nixos
 
