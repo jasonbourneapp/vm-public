@@ -253,6 +253,27 @@
             includeProprietary = false;
           };
         };
+
+        # === ISO INSTALLER IMAGE (build-iso) ===
+        iso = nixos-generators.nixosGenerate {
+          inherit pkgs;
+          format = "install-iso";
+
+          modules = [
+            inputs.home-manager.nixosModules.home-manager
+            ./vm.nix
+            binaryCacheConfig
+            (mkUpdateModule "nixos-vm")
+          ];
+
+          # isFullDesktop = true (Live CD с графикой)
+          # includeProprietary = true
+          specialArgs = {
+            inherit inputs;
+            isFullDesktop = true;
+            includeProprietary = true;
+          };
+        };
       });
 
       devShells = forAllSystems (system: {

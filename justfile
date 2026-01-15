@@ -27,6 +27,11 @@ build-console:
   nix build .#console --impure --out-link ./build/console
   @echo "Build complete! Console image located at ./build/console/nixos.qcow2"
 
+# Сборка ISO (Live Installer)
+build-iso: pull-cache
+  nix build .#iso --impure
+  @echo "ISO Build complete! Image located at ./result/iso/*.iso"
+
 # Очистка старых билдов
 clean:
     rm -rf result result-* run_macos.sh
