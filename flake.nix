@@ -130,7 +130,9 @@
             ({ lib, ... }: {
                # Перебиваем дефолтное значение устройства загрузчика
                boot.loader.grub.device = lib.mkForce "/dev/sda";
-               virtualisation.diskSize = 51200;
+               # virtualisation.memorySize = 8192;
+
+               virtualisation.diskSize = 21200;
             })
           ];
 
