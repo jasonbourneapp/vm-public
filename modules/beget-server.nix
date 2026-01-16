@@ -4,6 +4,8 @@ let
   # === НАСТРОЙКИ СЕТИ (INFRASTRUCTURE LAYER) ===
   # Получаем IP из ENV (через justfile) или используем fallback из старого проекта
   envIp = builtins.getEnv "BEGET_AUTOGEN_IP";
+  # Получаем приватный IP из ENV (ens9), если он передан
+  envPrivateIp = builtins.getEnv "BEGET_AUTOGEN_PRIVATE_IP";
 
   publicIface = {
     name = "ens3";
@@ -96,6 +98,16 @@ in
           via = publicIface.gateway;
         }
       ];
+    };
+
+    # === НАСТРОЙКА ПРИВАТНОЙ СЕТИ (ENS9) ===
+    # Включается только если передан IP через just deploy-beget-autogen ... private_ip=...
+    interfaces.ens9 = lib.mkIf (envPrivateIp != "") {
+      useDHCP = false;
+      ipv4.addresses = [{
+        address = envPrivateIp;
+        prefixLength = 24; # Стандартная маска для приватных сетей
+      }];
     };
   };
 

@@ -1,5 +1,5 @@
 {
-  description = "NixOS QEMU and VirtualBox images (Proprietary/Binary Build)";
+  description = "NixOS QEMU and VirtualBox images (Proprietary/Binary Build) + Colmena Deploy";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
@@ -11,14 +11,18 @@
       url = "github:nix-community/home-manager/release-25.11";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    # === ДОБАВЛЯЕМ DISKO ===
     disko = {
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # === ДОБАВЛЕНО: COLMENA ===
+    colmena = {
+      url = "github:zhaofengli/colmena/v0.4.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, nixos-generators, disko, ... }@inputs:
+  outputs = { self, nixpkgs, nixos-generators, disko, colmena, ... }@inputs:
     let
       supportedSystems = [ "x86_64-linux" "aarch64-linux" ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
@@ -98,6 +102,44 @@
 
     in
     {
+      # === ДОБАВЛЕНО: КОНФИГУРАЦИЯ COLMENA ===
+      colmena = {
+        meta = {
+          # Используем pkgs для архитектуры сервера
+          nixpkgs = mkPkgs "x86_64-linux";
+          specialArgs = {
+            inherit inputs;
+            # Параметры должны совпадать с nixos-beget
+            isFullDesktop = true;
+            includeProprietary = true;
+            isVirtualBox = false;
+          };
+        };
+
+        # Имя хоста для Colmena (на него ссылаемся в justfile: --on nixos-beget)
+        "nixos-beget" = { name, nodes, pkgs, ... }: {
+          deployment = {
+            targetUser = "root";
+            # ЛОГИКА IP:
+            # 1. Если запущено через Just с IP (export BEGET_AUTOGEN_IP=...), берем его.
+            # 2. Иначе берем дефолтный алиас из SSH config.
+            targetHost = let
+              envIp = builtins.getEnv "BEGET_AUTOGEN_IP";
+            in if envIp != "" then envIp else "beget_autogen";
+          };
+
+          imports = [
+            # Те же модули, что в nixosConfigurations."nixos-beget"
+            inputs.home-manager.nixosModules.home-manager
+            ./vm.nix
+            binaryCacheConfig
+            (mkUpdateModule "nixos-beget")
+            disko.nixosModules.disko
+            ./modules/beget-server.nix
+          ];
+        };
+      };
+
       packages = forAllSystems (system: let
         pkgs = mkPkgs system;
       in {
@@ -227,6 +269,8 @@
           buildInputs = [
             nixpkgs.legacyPackages.${system}.nixos-rebuild
             nixos-generators.packages.${system}.nixos-generate
+            # === ДОБАВЛЕНО: Пакет Colmena для nix develop ===
+            colmena.packages.${system}.colmena
           ];
         };
       });
@@ -309,20 +353,16 @@
           pkgs = mkPkgs "x86_64-linux";
           specialArgs = {
             inherit inputs;
-            # Здесь можно решить: нужен Desktop или только консоль.
-            # Ставлю true, так как в начале ты просил "конфигурацию nixos которая мне нужна" (а она с десктопом).
             isFullDesktop = true;
             includeProprietary = true;
             isVirtualBox = false;
           };
           modules = [
-            # 1. Твоя операционная система (Domain)
             inputs.home-manager.nixosModules.home-manager
             ./vm.nix
             binaryCacheConfig
             (mkUpdateModule "nixos-beget")
 
-            # 2. Инфраструктура сервера (Infrastructure)
             disko.nixosModules.disko
             ./modules/beget-server.nix
           ];

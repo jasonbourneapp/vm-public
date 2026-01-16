@@ -246,14 +246,16 @@ export-arm-pkgs:
 # === ПРОШИВКА SERVER (VPS BEGET) ===
 
 # Полная установка с nixos-anywhere для beget-autogen
-burn-beget-autogen ip_addr="": pull-cache
+# Добавлена поддержка приватного IP (ens9)
+burn-beget-autogen ip_addr="" private_ip="": pull-cache
     @echo "Подготовка к прошивке beget-autogen..."
     @# Экспортируем переменную для flake (impure)
     export BEGET_AUTOGEN_IP="{{ip_addr}}"; \
+    export BEGET_AUTOGEN_PRIVATE_IP="{{private_ip}}"; \
     if [ -z "{{ip_addr}}" ]; then \
         echo "Сборка конфигурации (IP: 31.207.77.3 по умолчанию)..."; \
     else \
-        echo "Сборка конфигурации (IP: {{ip_addr}})..."; \
+        echo "Сборка конфигурации (IP: {{ip_addr}}, Private IP: {{private_ip}})..."; \
     fi; \
     echo "1. Сборка Disko скрипта..."; \
     nix build .#nixosConfigurations.nixos-beget.config.system.build.diskoScript --impure --out-link result-disko; \
@@ -270,27 +272,9 @@ burn-beget-autogen ip_addr="": pull-cache
 # === DEPLOY / UPDATE (BEGET VPS) ===
 
 # Обновление конфигурации на работающем сервере без переустановки
-# Использование: just deploy-beget-autogen 155.212.217.181
-deploy-beget-autogen ip_addr="": pull-cache
-    @if [ -z "{{ip_addr}}" ]; then \
-        echo "❌ ОШИБКА: Не указан IP адрес."; \
-        echo "Использование: just deploy-beget-autogen <IP_ADDRESS>"; \
-        exit 1; \
-    fi
-    @echo "🚀 Обновление конфигурации на {{ip_addr}}..."
-
-    @# 1. Экспортируем IP, чтобы flake (beget-server.nix) сгенерировал правильный network config
+# Использование: just deploy-beget-autogen 155.212.217.181 10.0.0.2
+deploy-beget-autogen ip_addr="" private_ip="": pull-cache
+    @echo "Deploying to Beget (Colmena)... IP: {{ if ip_addr == "" { "SSH Alias (beget_autogen)" } else { ip_addr } }}"
     export BEGET_AUTOGEN_IP="{{ip_addr}}"; \
-    \
-    # 2. Запускаем обновление через SSH \
-    # --use-remote-sudo: использовать sudo на удаленном сервере (нужно для root действий) \
-    # --target-host: куда деплоить \
-    # --impure: чтобы прочитать переменную окружения BEGET_AUTOGEN_IP \
-    nixos-rebuild switch \
-        --flake .#nixos-beget \
-        --target-host root@{{ip_addr}} \
-        --use-remote-sudo \
-        --show-trace \
-        --impure
-
-    @echo "✅ Обновление завершено!"
+    export BEGET_AUTOGEN_PRIVATE_IP="{{private_ip}}"; \
+    nix develop -c colmena apply --on nixos-beget --impure
