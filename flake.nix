@@ -11,9 +11,14 @@
       url = "github:nix-community/home-manager/release-25.11";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # === ДОБАВЛЯЕМ DISKO ===
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, nixos-generators, ... }@inputs:
+  outputs = { self, nixpkgs, nixos-generators, disko, ... }@inputs:
     let
       supportedSystems = [ "x86_64-linux" "aarch64-linux" ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
@@ -111,7 +116,7 @@
             inherit inputs;
             isFullDesktop = true;
             includeProprietary = true;
-            isVirtualBox = false; # Явно указываем false
+            isVirtualBox = false;
           };
         };
 
@@ -126,12 +131,8 @@
             binaryCacheConfig
             (mkUpdateModule "nixos-vm")
 
-            # СПЕЦИФИЧНЫЕ НАСТРОЙКИ VIRTUALBOX
             ({ lib, ... }: {
-               # Перебиваем дефолтное значение устройства загрузчика
                boot.loader.grub.device = lib.mkForce "/dev/sda";
-               # virtualisation.memorySize = 8192;
-
                virtualisation.diskSize = 21200;
             })
           ];
@@ -140,7 +141,7 @@
             inherit inputs;
             isFullDesktop = true;
             includeProprietary = true;
-            isVirtualBox = true; # <--- ВОТ ЭТО БЫЛО ПРОПУЩЕНО
+            isVirtualBox = true;
           };
         };
 
@@ -300,6 +301,30 @@
                 autoResize = true;
               };
             })
+          ];
+        };
+
+        # === ЦЕЛЕВАЯ КОНФИГУРАЦИЯ ДЛЯ BEGET ===
+        "nixos-beget" = nixpkgs.lib.nixosSystem {
+          pkgs = mkPkgs "x86_64-linux";
+          specialArgs = {
+            inherit inputs;
+            # Здесь можно решить: нужен Desktop или только консоль.
+            # Ставлю true, так как в начале ты просил "конфигурацию nixos которая мне нужна" (а она с десктопом).
+            isFullDesktop = true;
+            includeProprietary = true;
+            isVirtualBox = false;
+          };
+          modules = [
+            # 1. Твоя операционная система (Domain)
+            inputs.home-manager.nixosModules.home-manager
+            ./vm.nix
+            binaryCacheConfig
+            (mkUpdateModule "nixos-beget")
+
+            # 2. Инфраструктура сервера (Infrastructure)
+            disko.nixosModules.disko
+            ./modules/beget-server.nix
           ];
         };
       };
