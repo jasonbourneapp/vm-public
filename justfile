@@ -122,7 +122,7 @@ update:
 # Создание локального диска: берем из result-desktop
 local:
   rm local_working_disk.qcow2||true
-  qemu-img create -f qcow2 -b result-desktop/nixos.qcow2 -F qcow2 local_working_disk.qcow2
+  qemu-img create -f qcow2 -b result-with-package/nixos.qcow2 -F qcow2 local_working_disk.qcow2
 
 
 local-arm:
