@@ -29,6 +29,7 @@ in {
   ]
   # Пакеты, которые устанавливаются только если isFullDesktop = true (Тяжелый софт)
   ++ lib.optionals isFullDesktop ([
+    eza
     unzip
     zip
     curl
