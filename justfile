@@ -8,42 +8,40 @@ pull-cache:
     $GNOME_SHELL_PATH \
     $JASONBOURNE_PATH
 
-# Сборка FULL DESKTOP (isFullDesktop = true) для QEMU/KVM
+# Сборка FULL DESKTOP -> result-desktop
 build: pull-cache
-  nix build .#default --impure
-  @echo "Full Desktop Build complete! Image located at ./result/nixos.qcow2"
+  nix build .#default --impure --out-link result-desktop
+  @echo "Full Desktop Build complete! Image located at ./result-desktop/nixos.qcow2"
 
-# Сборка для VirtualBox (OVA)
-# Исправлено переопределение GRUB и добавлены Guest Additions
+# Сборка для VirtualBox (OVA) -> result-vbox
 build-vbox: pull-cache
-  nix build .#vbox --impure
-  @echo "VirtualBox Build complete! OVA image located at ./result/*.ova"
+  nix build .#vbox --impure --out-link result-vbox
+  @echo "VirtualBox Build complete! OVA image located at ./result-vbox/*.ova"
 
+# Сборка с пакетом -> result-with-package
 build-with-package: pull-cache
-  nix build .#with-package --impure -L
+  nix build .#with-package --impure -L --out-link result-with-package
 
-# Сборка LIGHT (isFullDesktop = false)
-# Использует тот же vm.nix, но с отключенным флагом
+# Сборка LIGHT -> result-light
 build-light: pull-cache
-  nix build .#light --impure
-  @echo "Light Build complete! Image located at ./result/nixos.qcow2"
+  nix build .#light --impure --out-link result-light
+  @echo "Light Build complete! Image located at ./result-light/nixos.qcow2"
 
-# Сборка консольного образа
+# Сборка консольного образа -> build/console (уже было настроено отдельно)
 build-console:
   nix build .#console --impure --out-link ./build/console
   @echo "Build complete! Console image located at ./build/console/nixos.qcow2"
 
-# Сборка ISO (Live Installer)
+# Сборка ISO -> result-iso
 build-iso: pull-cache
-  nix build .#iso --impure
-  @echo "ISO Build complete! Image located at ./result/iso/*.iso"
+  nix build .#iso --impure --out-link result-iso
+  @echo "ISO Build complete! Image located at ./result-iso/*.iso"
 
-# Очистка старых билдов
+# Очистка старых билдов (удалит result, result-desktop, result-vbox и т.д.)
 clean:
     rm -rf result result-* run_macos.sh
 
 # Локальный запуск на Linux (x86_64)
-# Использует KVM для ускорения
 run-linux:
     qemu-system-x86_64 \
       -enable-kvm \
@@ -81,13 +79,13 @@ run-console:
       -netdev user,id=net0,hostfwd=tcp::2222-:22
 
 
-
+# Сжатие: берем из result-desktop (основной билд)
 compress:
   qemu-img convert \
     -p \
     -O qcow2 \
     -c \
-    result/nixos.qcow2 \
+    result-desktop/nixos.qcow2 \
     nixos-x86_64.qcow2
 
 compress-console:
@@ -106,11 +104,12 @@ compress-arm64:
     arm/nixos.qcow2 \
     nixos-arm64.qcow2
 
+# Сжатие 2: берем из result-desktop
 compress-2:
   qemu-img convert \
     -p \
     -O raw \
-    result/nixos.qcow2 \
+    result-desktop/nixos.qcow2 \
     nixos.raw
   zstd -T0 -19 nixos.raw
 
@@ -120,9 +119,10 @@ uncompress:
 update:
   nix flake update --update-input jasonbourne-desktop --update-input mutter-src
 
+# Создание локального диска: берем из result-desktop
 local:
   rm local_working_disk.qcow2||true
-  qemu-img create -f qcow2 -b result/nixos.qcow2 -F qcow2 local_working_disk.qcow2
+  qemu-img create -f qcow2 -b result-desktop/nixos.qcow2 -F qcow2 local_working_disk.qcow2
 
 
 local-arm:
@@ -130,8 +130,6 @@ local-arm:
   qemu-img create -f qcow2 -b nixos.compressed.arm.qcow2 -F qcow2 local.compressed.arm.qcow2
 
 nixupdate: pull-cache
-  # Передаем переменные из .env в sudo environment, так как proprietary.nix их читает через builtins.getEnv
-  # Добавлены _ARM версии переменных
   sudo --preserve-env=MUTTER_PATH,GNOME_SHELL_PATH,JASONBOURNE_PATH,MUTTER_PATH_ARM,GNOME_SHELL_PATH_ARM,JASONBOURNE_PATH_ARM \
     nixos-rebuild switch --flake /etc/nixos#nixos-vm --impure
 
@@ -157,13 +155,12 @@ minio-alias-ls:
 minio-ls:
   nix run nixpkgs#minio-client -- ls devready/7bfdb0d3815d-devils-s3
 
+# Копирование в Minio: исправлены пути к result-vbox и result-iso
 minio-copy:
   nix run nixpkgs#minio-client -- cp nixos-arm64.qcow2 devready/7bfdb0d3815d-devils-s3
   nix run nixpkgs#minio-client -- cp nixos-x86_64.qcow2 devready/7bfdb0d3815d-devils-s3
-  nix run nixpkgs#minio-client -- cp result/nixos-image-virtualbox-25.11.20260110.d030887-x86_64-linux.ova devready/7bfdb0d3815d-devils-s3
-  nix run nixpkgs#minio-client -- cp result/iso/nixos-25.11.20260110.d030887-x86_64-linux.iso devready/7bfdb0d3815d-devils-s3
-  # nix run nixpkgs#minio-client -- cp -r folder devready/7bfdb0d3815d-devils-s3
-  # nix run nixpkgs#minio-client -- cp devready/7bfdb0d3815d-devils-s3/file.qemu .
+  nix run nixpkgs#minio-client -- cp result-vbox/*.ova devready/7bfdb0d3815d-devils-s3
+  nix run nixpkgs#minio-client -- cp result-iso/iso/*.iso devready/7bfdb0d3815d-devils-s3
 
 ## 6. Сгенерировать временную ссылку (аналог presigned URL)
 minio-share-7d:
@@ -183,7 +180,6 @@ resize:
 run-arm:
     #!/usr/bin/env bash
     BIOS_PATH=$(nix-build '<nixpkgs>' -A pkgsCross.aarch64-multiplatform.OVMF.fd --no-out-link)
-    # Создаем файлы правильного размера если их нет
     if [ ! -f flash0.img ]; then \
       dd if=/dev/zero of=flash0.img bs=1M count=64; \
       dd if="$BIOS_PATH/FV/QEMU_EFI.fd" of=flash0.img conv=notrunc; \
@@ -228,28 +224,17 @@ export-arm-pkgs:
     )
 
     for pkg in "${pkgs[@]}"; do
-        # Пропускаем пустые строки, если переменной нет
         [[ -z "$pkg" ]] && continue
-
         echo "---------------------------------------------------"
         echo "Processing: $pkg"
-
-        # 1. Экспорт с удаленной машины -> Импорт локально
-        # \$(...) экранирован, чтобы выполниться внутри SSH
-        # $pkg подставляется локальным bash
         ssh -p 2223 user@localhost "nix-store --export \$(nix-store -qR $pkg)" | nix-store --import
-
-        # 2. Пуш в бинарный кэш
         attic push remote:system "$pkg"
     done
 
 # === ПРОШИВКА SERVER (VPS BEGET) ===
 
-# Полная установка с nixos-anywhere для beget-autogen
-# Добавлена поддержка приватного IP (ens9)
 burn-beget-autogen ip_addr="" private_ip="": pull-cache
     @echo "Подготовка к прошивке beget-autogen..."
-    @# Экспортируем переменную для flake (impure)
     export BEGET_AUTOGEN_IP="{{ip_addr}}"; \
     export BEGET_AUTOGEN_PRIVATE_IP="{{private_ip}}"; \
     if [ -z "{{ip_addr}}" ]; then \
@@ -271,8 +256,6 @@ burn-beget-autogen ip_addr="" private_ip="": pull-cache
 
 # === DEPLOY / UPDATE (BEGET VPS) ===
 
-# Обновление конфигурации на работающем сервере без переустановки
-# Использование: just deploy-beget-autogen 155.212.217.181 10.0.0.2
 deploy-beget-autogen ip_addr="" private_ip="": pull-cache
     @echo "Deploying to Beget (Colmena)... IP: {{ if ip_addr == "" { "SSH Alias (beget_autogen)" } else { ip_addr } }}"
     export BEGET_AUTOGEN_IP="{{ip_addr}}"; \
