@@ -85,7 +85,7 @@ compress:
     -p \
     -O qcow2 \
     -c \
-    result-desktop/nixos.qcow2 \
+    result-with-package/nixos.qcow2 \
     nixos-x86_64.qcow2
 
 compress-console:
