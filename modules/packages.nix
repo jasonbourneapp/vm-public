@@ -44,9 +44,15 @@ in {
     gpu-screen-recorder
   ])
   # Пакеты, которые нужны при включенном proprietary стеке (jasonbourne)
-  # Это условие срабатывает и для 'default' (full), и для 'with-package'
   ++ lib.optionals includeProprietary [
     pkgs.jasonbourne
+
+    # === Добавлено: создаем команду devready как ссылку на jasonbourne ===
+    (pkgs.runCommand "devready-alias" {} ''
+      mkdir -p $out/bin
+      # Создаем символическую ссылку: devready -> путь_к_jasonbourne
+      ln -s ${pkgs.jasonbourne}/bin/jasonbourne $out/bin/devready
+    '')
   ];
 
   # Пробрасываем папку с расширением в /etc/chrome-extension
