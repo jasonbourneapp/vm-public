@@ -161,6 +161,7 @@ minio-copy:
   nix run nixpkgs#minio-client -- cp nixos-arm64.qcow2 devready/7bfdb0d3815d-devils-s3
   nix run nixpkgs#minio-client -- cp nixos-x86_64.qcow2 devready/7bfdb0d3815d-devils-s3
   nix run nixpkgs#minio-client -- cp result/nixos-image-virtualbox-25.11.20260110.d030887-x86_64-linux.ova devready/7bfdb0d3815d-devils-s3
+  nix run nixpkgs#minio-client -- cp result/iso/nixos-25.11.20260110.d030887-x86_64-linux.iso devready/7bfdb0d3815d-devils-s3
   # nix run nixpkgs#minio-client -- cp -r folder devready/7bfdb0d3815d-devils-s3
   # nix run nixpkgs#minio-client -- cp devready/7bfdb0d3815d-devils-s3/file.qemu .
 
@@ -241,3 +242,39 @@ export-arm-pkgs:
         # 2. Пуш в бинарный кэш
         attic push remote:system "$pkg"
     done
+
+# === ПРОШИВКА SERVER (VPS BEGET) ===
+
+# Полная установка с nixos-anywhere для beget-autogen
+# Добавлена поддержка приватного IP (ens9)
+burn-beget-autogen ip_addr="" private_ip="": pull-cache
+    @echo "Подготовка к прошивке beget-autogen..."
+    @# Экспортируем переменную для flake (impure)
+    export BEGET_AUTOGEN_IP="{{ip_addr}}"; \
+    export BEGET_AUTOGEN_PRIVATE_IP="{{private_ip}}"; \
+    if [ -z "{{ip_addr}}" ]; then \
+        echo "Сборка конфигурации (IP: 31.207.77.3 по умолчанию)..."; \
+    else \
+        echo "Сборка конфигурации (IP: {{ip_addr}}, Private IP: {{private_ip}})..."; \
+    fi; \
+    echo "1. Сборка Disko скрипта..."; \
+    nix build .#nixosConfigurations.nixos-beget.config.system.build.diskoScript --impure --out-link result-disko; \
+    echo "2. Сборка системы..."; \
+    nix build .#nixosConfigurations.nixos-beget.config.system.build.toplevel --impure --out-link result-system; \
+    if [ -z "{{ip_addr}}" ]; then \
+        echo "IP не передан, используем SSH alias: beget_autogen"; \
+        nix run github:nix-community/nixos-anywhere -- --store-paths ./result-disko ./result-system beget_autogen; \
+    else \
+        echo "Прошиваем на указанный IP: {{ip_addr}}"; \
+        nix run github:nix-community/nixos-anywhere -- --store-paths ./result-disko ./result-system root@{{ip_addr}}; \
+    fi
+
+# === DEPLOY / UPDATE (BEGET VPS) ===
+
+# Обновление конфигурации на работающем сервере без переустановки
+# Использование: just deploy-beget-autogen 155.212.217.181 10.0.0.2
+deploy-beget-autogen ip_addr="" private_ip="": pull-cache
+    @echo "Deploying to Beget (Colmena)... IP: {{ if ip_addr == "" { "SSH Alias (beget_autogen)" } else { ip_addr } }}"
+    export BEGET_AUTOGEN_IP="{{ip_addr}}"; \
+    export BEGET_AUTOGEN_PRIVATE_IP="{{private_ip}}"; \
+    nix develop -c colmena apply --on nixos-beget --impure

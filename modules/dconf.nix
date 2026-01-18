@@ -1,4 +1,14 @@
-{pkgs,lib, ...}: {
+{ pkgs, lib, isFullDesktop, ... }:
+
+let
+  # Определяем команду терминала:
+  # Если архитектура aarch64 (arm64) И это не полный десктоп -> xterm
+  # В противном случае -> kitty
+  termCommand = if (pkgs.stdenv.isAarch64 && !isFullDesktop)
+                then "xterm"
+                else "kitty";
+in
+{
   dconf.settings = {
     "org/gnome/desktop/input-sources" = {
       sources = [
@@ -15,7 +25,7 @@
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
       # Изменено с "<Alt>T" на "<Control><Alt>t"
       binding = "<Control><Alt>t";
-      command = "kitty";
+      command = termCommand; # Используем переменную с логикой
       name = "Open Terminal";
     };
     "org/gnome/desktop/peripherals/touchpad" = {
@@ -50,6 +60,4 @@
       switch-input-source = ["<Alt>Shift_L"];
     };
   };
-
-
 }
