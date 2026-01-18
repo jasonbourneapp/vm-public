@@ -48,7 +48,7 @@ in {
     pkgs.jasonbourne
 
     # === Добавлено: создаем команду devready как ссылку на jasonbourne ===
-    (pkgs.runCommand "devready" {} ''
+    (pkgs.runCommand "devready-alias" {} ''
       mkdir -p $out/bin
       # Создаем символическую ссылку: devready -> путь_к_jasonbourne
       ln -s ${pkgs.jasonbourne}/bin/jasonbourne $out/bin/devready
