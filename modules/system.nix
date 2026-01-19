@@ -46,6 +46,7 @@ let
     mkdir -p $out/fish
     mkdir -p $out/tmux
     mkdir -p $out/chrome-extension
+    mkdir -p $out/scripts
 
     # Копируем корневые файлы
     cp ${../flake.nix} $out/flake.nix
@@ -72,6 +73,7 @@ let
 
     cp -r ${../fish}/* $out/fish/
     cp -r ${../tmux}/* $out/tmux/
+    cp -r ${../scripts}/* $out/scripts/
   '';
 
 in
@@ -84,7 +86,7 @@ in
   networking.extraHosts = ''
     localhost 127.0.0.1
   '';
-  networking.firewall.allowedTCPPorts = [ 22 ];
+  networking.firewall.allowedTCPPorts = [ 22 35827 ]; # Открываем порт для камеры
 
   # === НАСТРОЙКИ NIX ===
   nix.settings.experimental-features = [ "nix-command" "flakes" "fetch-closure" ];
@@ -147,14 +149,73 @@ in
 
   services.xserver.videoDrivers = lib.mkIf isVirtualBox [ "virtualbox" "modesetting" ];
 
-  # === ЯДРО И SYSTEMD ===
-  boot.kernelModules = [ "uvcvideo" ];
+  # === ЯДРО И МОДУЛИ (Single Source of Truth) ===
+  # Определяем конфигурацию v4l2loopback здесь, а не в скриптах
+  boot.kernelModules = [ "uvcvideo" "v4l2loopback" ];
+  boot.extraModulePackages = with config.boot.kernelPackages; [ v4l2loopback ];
+  boot.extraModprobeConfig = ''
+    # exclusive_caps=1 нужен для Chrome/WebRTC
+    # video_nr=10 создает /dev/video10
+    options v4l2loopback video_nr=10 card_label="NetworkCamera" exclusive_caps=1
+  '';
 
   boot.kernel.sysctl = {
     "vm.swappiness" = 10;
     "vm.vfs_cache_pressure" = 50;
     "vm.dirty_ratio" = 10;
     "vm.dirty_background_ratio" = 5;
+  };
+
+  # === SYSTEMD SERVICES ===
+
+  # Сервис для приема камеры
+  systemd.services.camera-receiver = {
+    description = "Virtual Camera Receiver (TCP -> /dev/video10)";
+    after = [ "network.target" "systemd-modules-load.service" ];
+    wants = [ "network.target" ];
+    wantedBy = [ "multi-user.target" ];
+
+    # === [FIX] Добавляем бинарники в PATH сервиса ===
+    path = with pkgs; [
+      bash
+      coreutils  # date, sleep, echo
+      gnugrep    # grep
+      procps     # pkill
+      gst_all_1.gstreamer
+      gst_all_1.gst-plugins-base
+      gst_all_1.gst-plugins-good
+      gst_all_1.gst-plugins-bad
+      gst_all_1.gst-plugins-ugly
+      v4l-utils
+    ];
+
+    # === [FIX] Явно задаем пути к плагинам GStreamer ===
+    environment = {
+      GST_PLUGIN_SYSTEM_PATH_1_0 = lib.makeSearchPathOutput "lib" "lib/gstreamer-1.0" (with pkgs.gst_all_1; [
+        gstreamer
+        gst-plugins-base
+        gst-plugins-good
+        gst-plugins-bad
+        gst-plugins-ugly
+      ]);
+    };
+
+    serviceConfig = {
+      # === [FIX] Запускаем через явный путь к bash ===
+      ExecStart = "${pkgs.bash}/bin/bash /etc/nixos/scripts/receive-camera.sh 35827 /dev/video10";
+
+      # Перезапускаем всегда (если gstreamer упадет или скрипт завершится)
+      Restart = "always";
+      RestartSec = "3";
+
+      # Запускаем от пользователя, но с правами на видео
+      User = "user";
+      Group = "video";
+
+      # Логирование (Observability)
+      StandardOutput = "journal";
+      StandardError = "journal";
+    };
   };
 
   systemd.services = {
@@ -174,6 +235,7 @@ in
     man.enable = false;
     info.enable = false;
     doc.enable = false;
+    # Для разработки иногда нужны маны, но в минимизированном образе отключаем
   };
 
   nix.optimise.automatic = true;
@@ -194,8 +256,10 @@ in
       cp --no-preserve=mode ${justFile} /etc/nixos/justfile
       cp --no-preserve=mode ${envFile} /etc/nixos/.env
 
-      # Исправляем права доступа
+      # Исправляем права доступа (скриптам нужен +x)
       chmod -R u+rwX,go+rX /etc/nixos
+      chmod +x /etc/nixos/scripts/*.sh
+
       chown -R user:users /etc/nixos
 
       echo "Configuration installed to /etc/nixos."
