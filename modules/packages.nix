@@ -22,6 +22,15 @@ in {
     # Базовые пакеты всегда нужны, terminfo для корректной работы ssh
     kitty.terminfo
     xclip
+
+    # === MEDIA / GSTREAMER ===
+    # Необходимы для работы скрипта приема камеры
+    gst_all_1.gstreamer
+    gst_all_1.gst-plugins-base
+    gst_all_1.gst-plugins-good
+    gst_all_1.gst-plugins-bad
+    gst_all_1.gst-plugins-ugly
+    v4l-utils # Для управления видеоустройствами (v4l2-ctl)
   ]
   ++ lib.optionals (pkgs.stdenv.hostPlatform.isx86_64 && !isFullDesktop) [
     kitty

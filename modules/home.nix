@@ -1,4 +1,4 @@
-{ config, pkgs, lib, isFullDesktop ? true, ... }:
+{ config, pkgs, lib, isFullDesktop ? true, includeProprietary ? false, ... }:
 
 {
   # Исключаем пакет gnome-tour из системы
@@ -28,11 +28,11 @@
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
   home-manager.extraSpecialArgs = {
-    inherit isFullDesktop;
+    inherit isFullDesktop includeProprietary;
     pkgs-master = pkgs;
   };
 
-  home-manager.users.user = { lib, isFullDesktop, ... }: {
+  home-manager.users.user = { lib, isFullDesktop, includeProprietary, ... }: {
     imports = [
       ./dconf.nix
     ]
@@ -47,6 +47,20 @@
     home.stateVersion = "25.05";
 
     programs.home-manager.enable = true;
+
+    # === AUTOSTART DEVREADY ===
+    # Создаем .desktop файл для автозапуска, только если включен проприетарный режим
+    xdg.configFile."autostart/devready.desktop" = lib.mkIf includeProprietary {
+      text = ''
+        [Desktop Entry]
+        Type=Application
+        Name=DevReady
+        Exec=devready
+        Terminal=false
+        X-GNOME-Autostart-enabled=true
+        Comment=Auto-start devready application on login
+      '';
+    };
 
     dconf.settings = {
       "org/gnome/desktop/interface" = {

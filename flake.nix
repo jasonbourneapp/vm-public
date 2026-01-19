@@ -269,8 +269,14 @@
           buildInputs = [
             nixpkgs.legacyPackages.${system}.nixos-rebuild
             nixos-generators.packages.${system}.nixos-generate
-            # === ДОБАВЛЕНО: Пакет Colmena для nix develop ===
             colmena.packages.${system}.colmena
+
+            # === MEDIA TOOLS FOR HOST ===
+            nixpkgs.legacyPackages.${system}.gst_all_1.gstreamer
+            nixpkgs.legacyPackages.${system}.gst_all_1.gst-plugins-base
+            nixpkgs.legacyPackages.${system}.gst_all_1.gst-plugins-good
+            nixpkgs.legacyPackages.${system}.gst_all_1.gst-plugins-bad
+            nixpkgs.legacyPackages.${system}.gst_all_1.gst-plugins-ugly
           ];
         };
       });
