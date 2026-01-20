@@ -1,7 +1,7 @@
 { config, pkgs, lib, isFullDesktop ? true, includeProprietary ? false, ... }:
 
 {
-  # Исключаем пакет gnome-tour из системы
+  # Исключаем лишние пакеты GNOME из системы
   environment.gnome.excludePackages = with pkgs; [
     gnome-tour
     gnome-connections
@@ -19,7 +19,7 @@
     gnome-logs
     gnome-characters
     totem             # Видео
-    tali              # Игры ниже...
+    tali              # Игры...
     iagno
     hitori
     atomix
@@ -34,7 +34,7 @@
 
   home-manager.users.user = { lib, isFullDesktop, includeProprietary, ... }: {
     imports = [
-      ./dconf.nix
+      ./dconf.nix # Все настройки GNOME теперь здесь
     ]
       # Условно импортируем fish и tmux только для desktop версии
       ++ lib.optionals isFullDesktop [
@@ -49,7 +49,6 @@
     programs.home-manager.enable = true;
 
     # === AUTOSTART DEVREADY ===
-    # Создаем .desktop файл для автозапуска, только если включен проприетарный режим
     xdg.configFile."autostart/devready.desktop" = lib.mkIf includeProprietary {
       text = ''
         [Desktop Entry]
@@ -62,54 +61,13 @@
       '';
     };
 
-    dconf.settings = {
-      "org/gnome/desktop/interface" = {
-        enable-animations = false;
-        enable-hot-corners = false;
-      };
-      "org/gnome/desktop/peripherals/mouse" = {
-        accel-profile = "flat";
-      };
-      "org/gnome/desktop/wm/preferences" = {
-        button-layout = "close:";
-        num-workspaces = 1;
-      };
-      "org/gnome/mutter" = {
-        dynamic-workspaces = false;
-        edge-tiling = false;
-      };
-      "org/gnome/shell" = {
-        disable-user-extensions = true;
-      };
-      "org/gnome/desktop/background" = {
-        primary-color = "#000000";
-        picture-uri = "file:///home/user/.backgrounds/black.jpg";
-        picture-uri-dark = "file:///home/user/.backgrounds/black.jpg";
-      };
-
-      "org/gnome/settings-daemon/plugins/power" = {
-        sleep-inactive-ac-type = "nothing";
-        sleep-inactive-battery-type = "nothing";
-        power-button-action = "nothing";
-        idle-brightness = false;
-      };
-
-      "org/gnome/desktop/session" = {
-        idle-delay = lib.hm.gvariant.mkUint32 0;
-      };
-
-      "org/gnome/desktop/screensaver" = {
-        lock-enabled = false;
-        idle-activation-enabled = false;
-      };
-    };
-
+    # Копирование статических файлов
     home.file = {
       ".gitconfig".source = ../gitconfig.txt;
       ".backgrounds/black.jpg".source = ../black.jpg;
     };
 
-
+    # Конфигурация Chromium (Пользовательская часть Home Manager)
     programs.chromium  = {
       enable = true;
 
@@ -123,22 +81,20 @@
         "--disable-gpu-video-decode"
         "--disable-features=GlobalMediaControls,SkiaGraphite"
         "--password-store=basic"
-        # Загружаем распакованное расширение из папки /etc/chrome-extension
+        # Для плавного скролла (если dconf не поможет)
+        "--enable-smooth-scrolling"
         "--load-extension=/etc/chrome-extension"
       ];
     };
-
   };
 
-
+  # Конфигурация Chromium (Системная часть NixOS)
   programs.chromium  = {
     enable = true;
-
-    # Здесь мы "легализуем" расширение и отключаем предупреждения
     extraOpts = {
       "CommandLineFlagSecurityWarningsEnabled" = false;
       "ExtensionInstallAllowlist" = [
-        "igobdnholdliocagogjjbmbooijahmha" # Ваш ID из ключа
+        "igobdnholdliocagogjjbmbooijahmha"
       ];
       "ExtensionInstallSources" = [
         "file:///etc/chrome-extension/*"

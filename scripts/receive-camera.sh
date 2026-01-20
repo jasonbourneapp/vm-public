@@ -4,34 +4,53 @@ set -euo pipefail
 PORT="${1:-35827}"
 OUTPUT_DEVICE="${2:-/dev/video10}"
 
-echo "📡 Starting camera receiver (FFmpeg): port $PORT -> $OUTPUT_DEVICE"
+echo "⚡ V4L2 ZERO-LATENCY RECEIVER: port $PORT -> $OUTPUT_DEVICE"
 
 if [ ! -e "$OUTPUT_DEVICE" ]; then
     echo "❌ Error: Device $OUTPUT_DEVICE not found."
+    echo "💡 Create v4l2loopback device:"
+    echo "   sudo modprobe v4l2loopback devices=1 video_nr=10 card_label='VirtualCam' exclusive_caps=1"
     exit 1
 fi
 
-echo "✅ Device $OUTPUT_DEVICE detected."
-
 while true; do
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - Waiting for FFmpeg stream on port $PORT..."
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Waiting for stream..."
 
-    # Принимаем MJPEG поток и декодируем в v4l2
-    ffmpeg \
-        -f mpjpeg \
-        -i "tcp://0.0.0.0:$PORT?listen=1" \
-        -f v4l2 \
-        -pix_fmt yuv420p \
-        "$OUTPUT_DEVICE" 2>&1 | \
-        grep -E "error|Error" || true
-
-    EXIT_CODE=$?
-    echo "❌ Pipeline stopped with code: $EXIT_CODE"
-
-    if [ $EXIT_CODE -gt 128 ]; then
-        exit $EXIT_CODE
+    # OpenBSD netcat использует другой синтаксис
+    # Используем ncat (nmap) или socat если доступны, иначе стандартный netcat
+    if command -v ncat &> /dev/null; then
+        ncat -l "$PORT" | ffmpeg \
+            -fflags nobuffer \
+            -flags low_delay \
+            -f mjpeg \
+            -i pipe:0 \
+            -c:v copy \
+            -f v4l2 \
+            "$OUTPUT_DEVICE" 2>&1 | \
+            grep -E "error|Error" || true
+    elif command -v socat &> /dev/null; then
+        socat TCP-LISTEN:"$PORT",reuseaddr,fork - | ffmpeg \
+            -fflags nobuffer \
+            -flags low_delay \
+            -f mjpeg \
+            -i pipe:0 \
+            -c:v copy \
+            -f v4l2 \
+            "$OUTPUT_DEVICE" 2>&1 | \
+            grep -E "error|Error" || true
+    else
+        # GNU netcat
+        nc -l "$PORT" | ffmpeg \
+            -fflags nobuffer \
+            -flags low_delay \
+            -f mjpeg \
+            -i pipe:0 \
+            -c:v copy \
+            -f v4l2 \
+            "$OUTPUT_DEVICE" 2>&1 | \
+            grep -E "error|Error" || true
     fi
 
-    echo "⏳ Restarting in 2 seconds..."
+    echo "❌ Stream stopped."
     sleep 2
 done

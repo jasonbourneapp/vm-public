@@ -54,6 +54,7 @@ run-linux:
       -drive file=local_working_disk.qcow2,if=none,id=systemdisk,format=qcow2 \
       -device virtio-net-pci,netdev=net0 \
       -netdev user,id=net0,hostfwd=tcp::2222-:22,hostfwd=tcp::35827-:35827 \
+      -device usb-host,vendorid=0x04f2,productid=0xb83c \
       -device intel-hda \
       -device hda-duplex,audiodev=snd0 \
       -device qemu-xhci \
@@ -61,7 +62,6 @@ run-linux:
       -display gtk,gl=on,grab-on-hover=on
     # -nographic
     # -display sdl,gl=on
-    # -device usb-host,vendorid=0x04f2,productid=0xb83c \
 
 
 # Запуск консольного образа (без GL и лишних устройств)

@@ -181,24 +181,21 @@ in
       coreutils  # date, sleep, echo
       gnugrep    # grep
       procps     # pkill
-      gst_all_1.gstreamer
-      gst_all_1.gst-plugins-base
-      gst_all_1.gst-plugins-good
-      gst_all_1.gst-plugins-bad
-      gst_all_1.gst-plugins-ugly
+      ffmpeg
       v4l-utils
+      netcat
     ];
 
     # === [FIX] Явно задаем пути к плагинам GStreamer ===
-    environment = {
-      GST_PLUGIN_SYSTEM_PATH_1_0 = lib.makeSearchPathOutput "lib" "lib/gstreamer-1.0" (with pkgs.gst_all_1; [
-        gstreamer
-        gst-plugins-base
-        gst-plugins-good
-        gst-plugins-bad
-        gst-plugins-ugly
-      ]);
-    };
+    # environment = {
+    #   GST_PLUGIN_SYSTEM_PATH_1_0 = lib.makeSearchPathOutput "lib" "lib/gstreamer-1.0" (with pkgs.gst_all_1; [
+    #     gstreamer
+    #     gst-plugins-base
+    #     gst-plugins-good
+    #     gst-plugins-bad
+    #     gst-plugins-ugly
+    #   ]);
+    # };
 
     serviceConfig = {
       # === [FIX] Запускаем через явный путь к bash ===
