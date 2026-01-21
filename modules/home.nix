@@ -1,4 +1,4 @@
-{ config, pkgs, lib, isFullDesktop ? true, includeProprietary ? false, ... }:
+{ config, pkgs, lib, isFullDesktop ? true, includeProprietary ? false, isVirtualBox ? false, ... }:
 
 {
   # Исключаем лишние пакеты GNOME из системы
@@ -48,6 +48,41 @@
 
     programs.home-manager.enable = true;
 
+    xdg.configFile."monitors.xml" = {
+      force = true;
+      text = let
+        # Теперь isVirtualBox доступна здесь
+        connectorName = if isVirtualBox then "Virtual1" else "Virtual-1";
+        width = "1920";
+        height = "1080";
+        rate = "60.000";
+      in ''
+        <monitors version="2">
+          <configuration>
+            <logicalmonitor>
+              <x>0</x>
+              <y>0</y>
+              <scale>1</scale>
+              <primary>yes</primary>
+              <monitor>
+                <monitorspec>
+                  <connector>${connectorName}</connector>
+                  <vendor>unknown</vendor>
+                  <product>unknown</product>
+                  <serial>unknown</serial>
+                </monitorspec>
+                <mode>
+                  <width>${width}</width>
+                  <height>${height}</height>
+                  <rate>${rate}</rate>
+                </mode>
+              </monitor>
+            </logicalmonitor>
+          </configuration>
+        </monitors>
+      '';
+    };
+
     # === AUTOSTART DEVREADY ===
     xdg.configFile."autostart/devready.desktop" = lib.mkIf includeProprietary {
       text = ''
@@ -68,23 +103,49 @@
     };
 
     # Конфигурация Chromium (Пользовательская часть Home Manager)
-    programs.chromium  = {
+    programs.chromium = {
       enable = true;
 
-      commandLineArgs = [
-        "--ozone-platform=wayland"
-        "--enable-features=UseOzonePlatform,WaylandWindowDecorations,WebRTCPipeWireCapturer,Vulkan,DefaultANGLEVulkan,VulkanFromANGLE"
-        "--enable-gpu-rasterization"
-        "--enable-zero-copy"
-        "--ignore-gpu-blocklist"
-        "--use-angle=vulkan"
-        "--disable-gpu-video-decode"
-        "--disable-features=GlobalMediaControls,SkiaGraphite"
-        "--password-store=basic"
-        # Для плавного скролла (если dconf не поможет)
-        "--enable-smooth-scrolling"
-        "--load-extension=/etc/chrome-extension"
-      ];
+      # ВАЖНО: Оставляем этот список пустым, чтобы Home Manager НЕ пытался
+      # вызывать .override для нашего кастомного пакета (это уберет ошибку сборки).
+      commandLineArgs = [];
+
+      package = let
+        # 1. Сначала подготавливаем Chromium со всеми флагами на уровне Nixpkgs.
+        # Это заменяет commandLineArgs из модуля Home Manager.
+        configuredChromium = pkgs.chromium.override {
+          commandLineArgs = [
+            "--ozone-platform=wayland"
+            "--enable-features=UseOzonePlatform,WaylandWindowDecorations,WebRTCPipeWireCapturer"
+            "--enable-gpu-rasterization"
+            "--enable-zero-copy"
+            "--ignore-gpu-blocklist"
+            "--enable-smooth-scrolling"
+            "--password-store=basic"
+            "--load-extension=/etc/chrome-extension"
+          ];
+        };
+      in
+      # 2. Создаем пакет-обертку, который содержит все файлы Chromium,
+      # но подменяет исполняемый файл на вызов через taskset.
+      pkgs.symlinkJoin {
+        name = "chromium-cpu-limited";
+        paths = [ configuredChromium ];
+        buildInputs = [ pkgs.makeWrapper ];
+        postBuild = ''
+          # Удаляем симлинк на бинарник, созданный symlinkJoin
+          rm $out/bin/chromium
+
+          # Создаем новый скрипт запуска
+          cat > $out/bin/chromium <<EOF
+          #!${pkgs.bash}/bin/bash
+          exec ${pkgs.util-linux}/bin/taskset -c 0-1 ${configuredChromium}/bin/chromium "\$@"
+          EOF
+
+          # Делаем скрипт исполняемым
+          chmod +x $out/bin/chromium
+        '';
+      };
     };
   };
 

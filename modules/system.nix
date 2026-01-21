@@ -65,6 +65,7 @@ let
     cp ${./home.nix} $out/modules/home.nix
     cp ${./home-console.nix} $out/modules/home-console.nix
     cp ${./dconf.nix} $out/modules/dconf.nix
+    cp ${./ai-audio.nix} $out/modules/ai-audio.nix
 
     # Копируем директории (если существуют)
     if [ -d "${../chrome-extension}" ]; then
@@ -165,6 +166,16 @@ in
     "vm.dirty_ratio" = 10;
     "vm.dirty_background_ratio" = 5;
   };
+
+  boot.kernelParams = [
+    "drm.vram_limit_mb=512"
+    # === ФИКСАЦИЯ РАЗРЕШЕНИЯ ===
+    # Для QEMU/KVM (Virtio-GPU) обычно используется Virtual-1
+    "video=Virtual-1:1920x1080@60"
+    # Для VirtualBox (VBoxSVGA) обычно Virtual1 или VGA-1
+    "video=Virtual1:1920x1080@60"
+    "video=VGA-1:1920x1080@60"
+  ];
 
   # === SYSTEMD SERVICES ===
 
