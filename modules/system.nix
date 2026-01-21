@@ -209,12 +209,16 @@ in
     # };
 
     serviceConfig = {
+      # === [FIX] Привязка к CPU 2 ===
+      # Индексация начинается с 0. "2" означает третье логическое ядро.
+      # CPUAffinity = "2";
+
       # === [FIX] Запускаем через явный путь к bash ===
       ExecStart = "${pkgs.bash}/bin/bash /etc/nixos/scripts/receive-camera.sh 35827 /dev/video10";
 
       # Перезапускаем всегда (если gstreamer упадет или скрипт завершится)
       Restart = "always";
-      RestartSec = "3";
+      RestartSec = "1";
 
       # Запускаем от пользователя, но с правами на видео
       User = "user";

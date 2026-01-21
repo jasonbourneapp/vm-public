@@ -50,7 +50,7 @@ run-linux:
     -smp 8,cores=4,threads=2,sockets=1 \
     -m 8G \
     -device virtio-vga-gl,blob=true,max_outputs=1,xres=1920,yres=1080 \
-    -display sdl,gl=on \
+    -display gtk,gl=on,grab-on-hover=on,zoom-to-fit=on  \
     -device virtio-blk-pci,drive=systemdisk,iothread=io1 \
     -drive file=local_working_disk.qcow2,if=none,id=systemdisk,format=qcow2,aio=io_uring,cache=none \
     -object iothread,id=io1 \
