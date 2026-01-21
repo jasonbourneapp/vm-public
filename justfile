@@ -47,7 +47,7 @@ run-linux:
     -enable-kvm \
     -machine q35,accel=kvm \
     -cpu host,kvm=on,kvm_pv_unhalt=on \
-    -smp 6,cores=3,threads=2,sockets=1 \
+    -smp 8,cores=4,threads=2,sockets=1 \
     -m 8G \
     -device virtio-vga-gl,blob=true,max_outputs=1,xres=1920,yres=1080 \
     -display sdl,gl=on \
