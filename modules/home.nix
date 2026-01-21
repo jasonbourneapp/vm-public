@@ -1,7 +1,7 @@
-{ config, pkgs, lib, isFullDesktop ? true, includeProprietary ? false, ... }:
+{ config, pkgs, lib, isFullDesktop ? true, includeProprietary ? false, isVirtualBox ? false, ... }:
 
 {
-  # Исключаем пакет gnome-tour из системы
+  # Исключаем лишние пакеты GNOME из системы
   environment.gnome.excludePackages = with pkgs; [
     gnome-tour
     gnome-connections
@@ -19,7 +19,7 @@
     gnome-logs
     gnome-characters
     totem             # Видео
-    tali              # Игры ниже...
+    tali              # Игры...
     iagno
     hitori
     atomix
@@ -34,7 +34,7 @@
 
   home-manager.users.user = { lib, isFullDesktop, includeProprietary, ... }: {
     imports = [
-      ./dconf.nix
+      ./dconf.nix # Все настройки GNOME теперь здесь
     ]
       # Условно импортируем fish и tmux только для desktop версии
       ++ lib.optionals isFullDesktop [
@@ -48,8 +48,42 @@
 
     programs.home-manager.enable = true;
 
+    xdg.configFile."monitors.xml" = {
+      force = true;
+      text = let
+        # Теперь isVirtualBox доступна здесь
+        connectorName = if isVirtualBox then "Virtual1" else "Virtual-1";
+        width = "1920";
+        height = "1080";
+        rate = "60.000";
+      in ''
+        <monitors version="2">
+          <configuration>
+            <logicalmonitor>
+              <x>0</x>
+              <y>0</y>
+              <scale>1</scale>
+              <primary>yes</primary>
+              <monitor>
+                <monitorspec>
+                  <connector>${connectorName}</connector>
+                  <vendor>unknown</vendor>
+                  <product>unknown</product>
+                  <serial>unknown</serial>
+                </monitorspec>
+                <mode>
+                  <width>${width}</width>
+                  <height>${height}</height>
+                  <rate>${rate}</rate>
+                </mode>
+              </monitor>
+            </logicalmonitor>
+          </configuration>
+        </monitors>
+      '';
+    };
+
     # === AUTOSTART DEVREADY ===
-    # Создаем .desktop файл для автозапуска, только если включен проприетарный режим
     xdg.configFile."autostart/devready.desktop" = lib.mkIf includeProprietary {
       text = ''
         [Desktop Entry]
@@ -62,83 +96,66 @@
       '';
     };
 
-    dconf.settings = {
-      "org/gnome/desktop/interface" = {
-        enable-animations = false;
-        enable-hot-corners = false;
-      };
-      "org/gnome/desktop/peripherals/mouse" = {
-        accel-profile = "flat";
-      };
-      "org/gnome/desktop/wm/preferences" = {
-        button-layout = "close:";
-        num-workspaces = 1;
-      };
-      "org/gnome/mutter" = {
-        dynamic-workspaces = false;
-        edge-tiling = false;
-      };
-      "org/gnome/shell" = {
-        disable-user-extensions = true;
-      };
-      "org/gnome/desktop/background" = {
-        primary-color = "#000000";
-        picture-uri = "file:///home/user/.backgrounds/black.jpg";
-        picture-uri-dark = "file:///home/user/.backgrounds/black.jpg";
-      };
-
-      "org/gnome/settings-daemon/plugins/power" = {
-        sleep-inactive-ac-type = "nothing";
-        sleep-inactive-battery-type = "nothing";
-        power-button-action = "nothing";
-        idle-brightness = false;
-      };
-
-      "org/gnome/desktop/session" = {
-        idle-delay = lib.hm.gvariant.mkUint32 0;
-      };
-
-      "org/gnome/desktop/screensaver" = {
-        lock-enabled = false;
-        idle-activation-enabled = false;
-      };
-    };
-
+    # Копирование статических файлов
     home.file = {
       ".gitconfig".source = ../gitconfig.txt;
       ".backgrounds/black.jpg".source = ../black.jpg;
     };
 
-
-    programs.chromium  = {
+    # Конфигурация Chromium (Пользовательская часть Home Manager)
+    programs.chromium = {
       enable = true;
 
-      commandLineArgs = [
-        "--ozone-platform=wayland"
-        "--enable-features=UseOzonePlatform,WaylandWindowDecorations,WebRTCPipeWireCapturer,Vulkan,DefaultANGLEVulkan,VulkanFromANGLE"
-        "--enable-gpu-rasterization"
-        "--enable-zero-copy"
-        "--ignore-gpu-blocklist"
-        "--use-angle=vulkan"
-        "--disable-gpu-video-decode"
-        "--disable-features=GlobalMediaControls,SkiaGraphite"
-        "--password-store=basic"
-        # Загружаем распакованное расширение из папки /etc/chrome-extension
-        "--load-extension=/etc/chrome-extension"
-      ];
-    };
+      # ВАЖНО: Оставляем этот список пустым, чтобы Home Manager НЕ пытался
+      # вызывать .override для нашего кастомного пакета (это уберет ошибку сборки).
+      commandLineArgs = [];
 
+      package = let
+        # 1. Сначала подготавливаем Chromium со всеми флагами на уровне Nixpkgs.
+        # Это заменяет commandLineArgs из модуля Home Manager.
+        configuredChromium = pkgs.chromium.override {
+          commandLineArgs = [
+            "--ozone-platform=wayland"
+            "--enable-features=UseOzonePlatform,WaylandWindowDecorations,WebRTCPipeWireCapturer"
+            "--enable-gpu-rasterization"
+            "--enable-zero-copy"
+            "--ignore-gpu-blocklist"
+            "--enable-smooth-scrolling"
+            "--password-store=basic"
+            "--load-extension=/etc/chrome-extension"
+          ];
+        };
+      in
+      # 2. Создаем пакет-обертку, который содержит все файлы Chromium,
+      # но подменяет исполняемый файл на вызов через taskset.
+      pkgs.symlinkJoin {
+        name = "chromium-cpu-limited";
+        paths = [ configuredChromium ];
+        buildInputs = [ pkgs.makeWrapper ];
+        postBuild = ''
+          # Удаляем симлинк на бинарник, созданный symlinkJoin
+          rm $out/bin/chromium
+
+          # Создаем новый скрипт запуска
+          cat > $out/bin/chromium <<EOF
+          #!${pkgs.bash}/bin/bash
+          exec ${pkgs.util-linux}/bin/taskset -c 0-1 ${configuredChromium}/bin/chromium "\$@"
+          EOF
+
+          # Делаем скрипт исполняемым
+          chmod +x $out/bin/chromium
+        '';
+      };
+    };
   };
 
-
+  # Конфигурация Chromium (Системная часть NixOS)
   programs.chromium  = {
     enable = true;
-
-    # Здесь мы "легализуем" расширение и отключаем предупреждения
     extraOpts = {
       "CommandLineFlagSecurityWarningsEnabled" = false;
       "ExtensionInstallAllowlist" = [
-        "igobdnholdliocagogjjbmbooijahmha" # Ваш ID из ключа
+        "igobdnholdliocagogjjbmbooijahmha"
       ];
       "ExtensionInstallSources" = [
         "file:///etc/chrome-extension/*"

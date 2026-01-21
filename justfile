@@ -43,25 +43,26 @@ clean:
 
 # Локальный запуск на Linux (x86_64)
 run-linux:
-    qemu-system-x86_64 \
-      -enable-kvm \
-      -machine q35 \
-      -cpu host \
-      -m 8G \
-      -smp 6 \
-      -vga virtio \
-      -device virtio-blk-pci,drive=systemdisk \
-      -drive file=local_working_disk.qcow2,if=none,id=systemdisk,format=qcow2 \
-      -device virtio-net-pci,netdev=net0 \
-      -netdev user,id=net0,hostfwd=tcp::2222-:22,hostfwd=tcp::35827-:35827 \
-      -device intel-hda \
-      -device hda-duplex,audiodev=snd0 \
-      -device qemu-xhci \
-      -audiodev pa,id=snd0 \
-      -display gtk,gl=on,grab-on-hover=on
-    # -nographic
-    # -display sdl,gl=on
-    # -device usb-host,vendorid=0x04f2,productid=0xb83c \
+  qemu-system-x86_64 \
+    -enable-kvm \
+    -machine q35,accel=kvm \
+    -cpu host,kvm=on,kvm_pv_unhalt=on \
+    -smp 8,cores=4,threads=2,sockets=1 \
+    -m 8G \
+    -device virtio-vga-gl,blob=true,max_outputs=1,xres=1920,yres=1080 \
+    -display gtk,gl=on,grab-on-hover=on,zoom-to-fit=on  \
+    -device virtio-blk-pci,drive=systemdisk,iothread=io1 \
+    -drive file=local_working_disk.qcow2,if=none,id=systemdisk,format=qcow2,aio=io_uring,cache=none \
+    -object iothread,id=io1 \
+    -device virtio-net-pci,netdev=net0 \
+    -netdev user,id=net0,hostfwd=tcp::2222-:22 \
+    -device qemu-xhci \
+    -device usb-host,vendorid=0x04f2,productid=0xb83c \
+    -device intel-hda -device hda-duplex,audiodev=snd0 \
+    -audiodev pa,id=snd0 \
+    -device virtio-rng-pci
+  # -nographic
+  # -display sdl,gl=on
 
 
 # Запуск консольного образа (без GL и лишних устройств)
@@ -131,7 +132,7 @@ local-arm:
 
 nixupdate: pull-cache
   sudo --preserve-env=MUTTER_PATH,GNOME_SHELL_PATH,JASONBOURNE_PATH,MUTTER_PATH_ARM,GNOME_SHELL_PATH_ARM,JASONBOURNE_PATH_ARM \
-    nixos-rebuild switch --flake /etc/nixos#nixos-vm --impure
+    nixos-rebuild switch --flake /etc/nixos#with-package --impure
 
 live-cd-update:
   sudo --preserve-env=MUTTER_PATH,GNOME_SHELL_PATH,JASONBOURNE_PATH \

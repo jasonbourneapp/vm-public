@@ -36,7 +36,7 @@ let
 
     nixupdate: pull-cache
       sudo --preserve-env=MUTTER_PATH,GNOME_SHELL_PATH,JASONBOURNE_PATH,MUTTER_PATH_ARM,GNOME_SHELL_PATH_ARM,JASONBOURNE_PATH_ARM \
-      nixos-rebuild switch --flake /etc/nixos#nixos-vm --impure
+      nixos-rebuild switch --flake /etc/nixos#with-package --impure
   '';
 
   # 3. Собираем структуру исходников конфига в одну директорию (в Nix Store)
@@ -65,6 +65,7 @@ let
     cp ${./home.nix} $out/modules/home.nix
     cp ${./home-console.nix} $out/modules/home-console.nix
     cp ${./dconf.nix} $out/modules/dconf.nix
+    cp ${./ai-audio.nix} $out/modules/ai-audio.nix
 
     # Копируем директории (если существуют)
     if [ -d "${../chrome-extension}" ]; then
@@ -166,6 +167,16 @@ in
     "vm.dirty_background_ratio" = 5;
   };
 
+  boot.kernelParams = [
+    "drm.vram_limit_mb=512"
+    # === ФИКСАЦИЯ РАЗРЕШЕНИЯ ===
+    # Для QEMU/KVM (Virtio-GPU) обычно используется Virtual-1
+    "video=Virtual-1:1920x1080@60"
+    # Для VirtualBox (VBoxSVGA) обычно Virtual1 или VGA-1
+    "video=Virtual1:1920x1080@60"
+    "video=VGA-1:1920x1080@60"
+  ];
+
   # === SYSTEMD SERVICES ===
 
   # Сервис для приема камеры
@@ -181,32 +192,33 @@ in
       coreutils  # date, sleep, echo
       gnugrep    # grep
       procps     # pkill
-      gst_all_1.gstreamer
-      gst_all_1.gst-plugins-base
-      gst_all_1.gst-plugins-good
-      gst_all_1.gst-plugins-bad
-      gst_all_1.gst-plugins-ugly
+      ffmpeg
       v4l-utils
+      netcat
     ];
 
     # === [FIX] Явно задаем пути к плагинам GStreamer ===
-    environment = {
-      GST_PLUGIN_SYSTEM_PATH_1_0 = lib.makeSearchPathOutput "lib" "lib/gstreamer-1.0" (with pkgs.gst_all_1; [
-        gstreamer
-        gst-plugins-base
-        gst-plugins-good
-        gst-plugins-bad
-        gst-plugins-ugly
-      ]);
-    };
+    # environment = {
+    #   GST_PLUGIN_SYSTEM_PATH_1_0 = lib.makeSearchPathOutput "lib" "lib/gstreamer-1.0" (with pkgs.gst_all_1; [
+    #     gstreamer
+    #     gst-plugins-base
+    #     gst-plugins-good
+    #     gst-plugins-bad
+    #     gst-plugins-ugly
+    #   ]);
+    # };
 
     serviceConfig = {
+      # === [FIX] Привязка к CPU 2 ===
+      # Индексация начинается с 0. "2" означает третье логическое ядро.
+      # CPUAffinity = "2";
+
       # === [FIX] Запускаем через явный путь к bash ===
       ExecStart = "${pkgs.bash}/bin/bash /etc/nixos/scripts/receive-camera.sh 35827 /dev/video10";
 
       # Перезапускаем всегда (если gstreamer упадет или скрипт завершится)
       Restart = "always";
-      RestartSec = "3";
+      RestartSec = "1";
 
       # Запускаем от пользователя, но с правами на видео
       User = "user";

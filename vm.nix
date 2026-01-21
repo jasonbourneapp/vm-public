@@ -2,6 +2,7 @@
 
 {
   imports = [
+    ./modules/ai-audio.nix
     ./modules/system.nix
     ./modules/desktop.nix
     ./modules/packages.nix

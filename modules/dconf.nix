@@ -1,15 +1,68 @@
 { pkgs, lib, isFullDesktop, ... }:
 
 let
-  # Определяем команду терминала:
-  # Если архитектура aarch64 (arm64) И это не полный десктоп -> xterm
-  # В противном случае -> kitty
+  # Логика выбора терминала
   termCommand = if (pkgs.stdenv.isAarch64 && !isFullDesktop)
                 then "xterm"
                 else "kitty";
 in
 {
   dconf.settings = {
+    # === НАСТРОЙКИ МЫШИ И ТАЧПАДА (ИСПРАВЛЕНИЕ СКРОЛЛА) ===
+    "org/gnome/desktop/peripherals/mouse" = {
+      # "default" (Adaptive) лучше обрабатывает скролл в VM, чем "flat"
+      accel-profile = "default";
+      # Замедляем мышь (значение от -1.0 до 1.0)
+      speed = lib.hm.gvariant.mkDouble (-0.5);
+    };
+
+    "org/gnome/desktop/peripherals/touchpad" = {
+      natural-scroll = true;
+      send-events = "enabled";
+      tap-to-click = true;
+      two-finger-scrolling-enabled = true;
+      # Замедляем тачпад (для VM это часто влияет и на скролл колесом)
+      speed = lib.hm.gvariant.mkDouble (-0.4);
+    };
+
+    # === ИНТЕРФЕЙС И ВНЕШНИЙ ВИД ===
+    "org/gnome/desktop/interface" = {
+      enable-animations = false;
+      enable-hot-corners = false;
+    };
+    "org/gnome/desktop/wm/preferences" = {
+      button-layout = "close:";
+      num-workspaces = 1;
+    };
+    "org/gnome/mutter" = {
+      dynamic-workspaces = false;
+      edge-tiling = false;
+    };
+    "org/gnome/shell" = {
+      disable-user-extensions = true;
+    };
+    "org/gnome/desktop/background" = {
+      primary-color = "#000000";
+      picture-uri = "file:///home/user/.backgrounds/black.jpg";
+      picture-uri-dark = "file:///home/user/.backgrounds/black.jpg";
+    };
+
+    # === ЭНЕРГОПИТАНИЕ И БЛОКИРОВКА ===
+    "org/gnome/settings-daemon/plugins/power" = {
+      sleep-inactive-ac-type = "nothing";
+      sleep-inactive-battery-type = "nothing";
+      power-button-action = "nothing";
+      idle-brightness = false;
+    };
+    "org/gnome/desktop/session" = {
+      idle-delay = lib.hm.gvariant.mkUint32 0;
+    };
+    "org/gnome/desktop/screensaver" = {
+      lock-enabled = false;
+      idle-activation-enabled = false;
+    };
+
+    # === ВВОД И РАСКЛАДКА ===
     "org/gnome/desktop/input-sources" = {
       sources = [
         (lib.hm.gvariant.mkTuple [ "xkb" "us" ])
@@ -17,23 +70,31 @@ in
       ];
       xkb-options = [ "grp:ctrl_shift_toggle" ];
     };
+
+    # === ГОРЯЧИЕ КЛАВИШИ ===
     "org/gnome/settings-daemon/plugins/media-keys" = {
       custom-keybindings = [
         "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/"
       ];
     };
+
+    # 1. Терминал
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
-      # Изменено с "<Alt>T" на "<Control><Alt>t"
       binding = "<Control><Alt>t";
-      command = termCommand; # Используем переменную с логикой
+      command = termCommand;
       name = "Open Terminal";
     };
-    "org/gnome/desktop/peripherals/touchpad" = {
-      natural-scroll = true;
-      send-events = "enabled";
-      tap-to-click = true;
-      two-finger-scrolling-enabled = true;
+
+    # 2. Перезагрузка DevReady (Jasonbourne)
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
+      binding = "<Control><Alt>r";
+      # Убиваем jasonbourne (так называется бинарник) и devready (на случай, если процесс так назван в списке),
+      # затем запускаем devready заново.
+      command = "sh -c 'pkill -9 jasonbourne; pkill -9 -f devready; devready'";
+      name = "Restart DevReady";
     };
+
     "org/gnome/desktop/wm/keybindings" = {
       close = ["<Alt>q"];
       cycle-group = [];

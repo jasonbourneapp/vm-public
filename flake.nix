@@ -282,6 +282,30 @@
       });
 
       nixosConfigurations = {
+        "with-package" = nixpkgs.lib.nixosSystem {
+          pkgs = mkPkgs "x86_64-linux";
+          specialArgs = {
+            inherit inputs;
+            isFullDesktop = false;       # ВАЖНО: Отключает тяжелый софт (Zoom, Telegram)
+            includeProprietary = true;   # ВАЖНО: Оставляет JasonBourne/DevReady
+            isVirtualBox = false;
+          };
+          modules = [
+            inputs.home-manager.nixosModules.home-manager
+            ./vm.nix
+            binaryCacheConfig
+            (mkUpdateModule "with-package") # Обновляем имя цели для скрипта update
+            ({ modulesPath, ... }: {
+              imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];
+              fileSystems."/" = {
+                device = "/dev/disk/by-label/nixos";
+                fsType = "ext4";
+                autoResize = true;
+              };
+            })
+          ];
+        };
+
         "nixos-vm" = nixpkgs.lib.nixosSystem {
           pkgs = mkPkgs "x86_64-linux";
           specialArgs = {
