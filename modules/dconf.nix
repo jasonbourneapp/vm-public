@@ -75,12 +75,24 @@ in
     "org/gnome/settings-daemon/plugins/media-keys" = {
       custom-keybindings = [
         "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/"
       ];
     };
+
+    # 1. Терминал
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
       binding = "<Control><Alt>t";
       command = termCommand;
       name = "Open Terminal";
+    };
+
+    # 2. Перезагрузка DevReady (Jasonbourne)
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
+      binding = "<Control><Alt>r";
+      # Убиваем jasonbourne (так называется бинарник) и devready (на случай, если процесс так назван в списке),
+      # затем запускаем devready заново.
+      command = "sh -c 'pkill -9 jasonbourne; pkill -9 -f devready; devready'";
+      name = "Restart DevReady";
     };
 
     "org/gnome/desktop/wm/keybindings" = {

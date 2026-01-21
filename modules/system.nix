@@ -36,7 +36,7 @@ let
 
     nixupdate: pull-cache
       sudo --preserve-env=MUTTER_PATH,GNOME_SHELL_PATH,JASONBOURNE_PATH,MUTTER_PATH_ARM,GNOME_SHELL_PATH_ARM,JASONBOURNE_PATH_ARM \
-      nixos-rebuild switch --flake /etc/nixos#nixos-vm --impure
+      nixos-rebuild switch --flake /etc/nixos#with-package --impure
   '';
 
   # 3. Собираем структуру исходников конфига в одну директорию (в Nix Store)
