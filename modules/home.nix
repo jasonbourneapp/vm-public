@@ -139,7 +139,7 @@
           # Создаем новый скрипт запуска
           cat > $out/bin/chromium <<EOF
           #!${pkgs.bash}/bin/bash
-          exec ${pkgs.util-linux}/bin/taskset -c 0-1 ${configuredChromium}/bin/chromium "\$@"
+          exec ${pkgs.util-linux}/bin/taskset -c 0-2 ${configuredChromium}/bin/chromium "\$@"
           EOF
 
           # Делаем скрипт исполняемым
