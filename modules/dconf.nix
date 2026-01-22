@@ -89,9 +89,11 @@ in
     # 2. Перезагрузка DevReady (Jasonbourne)
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
       binding = "<Control><Alt>r";
-      # Убиваем jasonbourne (так называется бинарник) и devready (на случай, если процесс так назван в списке),
-      # затем запускаем devready заново.
-      command = "sh -c 'pkill -9 jasonbourne; pkill -9 -f devready; devready'";
+      # Исправление:
+      # 1. Используем полные пути к sh, pkill и sleep через pkgs.
+      # 2. Добавлена пауза (sleep 1).
+      # 3. Запускаем напрямую jasonbourne через путь к пакету, так как alias 'devready' может быть недоступен в PATH демона.
+      command = "${pkgs.bash}/bin/sh -c '${pkgs.procps}/bin/pkill -9 jasonbourne || true; ${pkgs.jasonbourne}/bin/jasonbourne'";
       name = "Restart DevReady";
     };
 

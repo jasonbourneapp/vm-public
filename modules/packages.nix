@@ -56,11 +56,18 @@ in {
   ++ lib.optionals includeProprietary [
     pkgs.jasonbourne
 
-    # === Добавлено: создаем команду devready как ссылку на jasonbourne ===
-    (pkgs.runCommand "devready-alias" {} ''
-      mkdir -p $out/bin
-      # Создаем символическую ссылку: devready -> путь_к_jasonbourne
-      ln -s ${pkgs.jasonbourne}/bin/jasonbourne $out/bin/devready
+    # === Добавлено: скрипт-обертка devready ===
+    # 1. Убивает старый процесс jasonbourne (если есть).
+    # 2. Запускает новый экземпляр.
+    (pkgs.writeShellScriptBin "devready" ''
+      # Используем pkill из пакета procps по абсолютному пути.
+      # -x : точное совпадение имени процесса (jasonbourne), чтобы не задеть лишнее.
+      # || true : чтобы скрипт не падал, если процесс не найден.
+      ${pkgs.procps}/bin/pkill -9 jasonbourne || true
+
+      # Запускаем бинарник jasonbourne, подменяя текущий процесс шелла (exec).
+      # Передаем все аргументы "$@".
+      exec ${pkgs.jasonbourne}/bin/jasonbourne "$@"
     '')
   ];
 

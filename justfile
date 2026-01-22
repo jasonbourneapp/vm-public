@@ -1,5 +1,9 @@
 set dotenv-load := true
 
+# === НОВАЯ КОМАНДА ДЛЯ ПОЛНОГО ЦИКЛА ===
+release-all: build-with-package build-iso build-vbox compress compress-arm64 minio-copy
+    @echo "All release steps completed successfully!"
+
 pull-cache:
   nix-store --realise \
     --option substituters 'http://devready.work:8080/system https://cache.nixos.org' \
@@ -39,7 +43,7 @@ build-iso: pull-cache
 
 # Очистка старых билдов (удалит result, result-desktop, result-vbox и т.д.)
 clean:
-    rm -rf result result-* run_macos.sh
+    rm -rf result result-* run_macos.sh build-tmp
 
 # Локальный запуск на Linux (x86_64)
 run-linux:
@@ -80,14 +84,21 @@ run-console:
       -netdev user,id=net0,hostfwd=tcp::2222-:22
 
 
-# Сжатие: берем из result-desktop (основной билд)
+# === ОБНОВЛЕННОЕ СЖАТИЕ (x86_64) ===
+# 1. Создаем temp папку
+# 2. Копируем туда образ, чтобы можно было менять (снимаем Read-only)
+# 3. Ресайзим (+50G)
+# 4. Сжимаем в финал
 compress:
-  qemu-img convert \
-    -p \
-    -O qcow2 \
-    -c \
-    result-with-package/nixos.qcow2 \
-    nixos-x86_64.qcow2
+  @echo "Processing x86_64: Copying -> Resizing (+50G) -> Compressing..."
+  mkdir -p build-tmp
+  rm -f build-tmp/temp-x86.qcow2
+  cp --remove-destination result-with-package/nixos.qcow2 build-tmp/temp-x86.qcow2
+  chmod +w build-tmp/temp-x86.qcow2
+  qemu-img resize build-tmp/temp-x86.qcow2 +50G
+  qemu-img convert -p -O qcow2 -c build-tmp/temp-x86.qcow2 nixos-x86_64.qcow2
+  rm build-tmp/temp-x86.qcow2
+  @echo "Done: nixos-x86_64.qcow2 created."
 
 compress-console:
   qemu-img convert \
@@ -97,13 +108,17 @@ compress-console:
     build/console/nixos.qcow2 \
     nixos-console.compressed.qcow2
 
+# === ОБНОВЛЕННОЕ СЖАТИЕ (ARM64) ===
 compress-arm64:
-  qemu-img convert \
-    -p \
-    -O qcow2 \
-    -c \
-    arm/nixos.qcow2 \
-    nixos-arm64.qcow2
+  @echo "Processing ARM64: Copying -> Resizing (+50G) -> Compressing..."
+  mkdir -p build-tmp
+  rm -f build-tmp/temp-arm.qcow2
+  cp --remove-destination arm/nixos.qcow2 build-tmp/temp-arm.qcow2
+  chmod +w build-tmp/temp-arm.qcow2
+  qemu-img resize build-tmp/temp-arm.qcow2 +50G
+  qemu-img convert -p -O qcow2 -c build-tmp/temp-arm.qcow2 nixos-arm64.qcow2
+  rm build-tmp/temp-arm.qcow2
+  @echo "Done: nixos-arm64.qcow2 created."
 
 # Сжатие 2: берем из result-desktop
 compress-2:

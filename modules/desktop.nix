@@ -52,7 +52,7 @@
     sessionVariables = rec {
       GTK_THEME = "Adwaita:dark";
       # Эта переменная будет работать, если ваш бинарный Mutter был скомпилирован с ее поддержкой
-      MUTTER_HIDE_WINDOWS_BY_TITLE = "jasonbourne_always_on_top";
+      MUTTER_HIDE_WINDOWS_BY_TITLE = "devready_always_on_top";
     };
   };
 }
