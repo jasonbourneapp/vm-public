@@ -5,12 +5,12 @@ DISK_FILE="local_working_disk.qcow2"
 DEFAULT_CORES=4
 DEFAULT_MEM_MB=4096
 
-echo "🚀 Подготовка к запуску High-Performance VM (Fixed Isolation)..."
+echo "🚀 Подготовка к запуску High-Performance VM..."
 
 # 1. Проверка прав sudo
 CAN_SUDO=true
 if ! command -v sudo &> /dev/null || ! sudo -v 2>/dev/null; then
-    echo "⚠️  Нет прав sudo. Изоляция будет пропущена."
+    echo "⚠️  Нет прав sudo. Изоляция хоста будет пропущена."
     CAN_SUDO=false
 fi
 
@@ -50,34 +50,26 @@ if [ "$VM_MEM_MB" -gt 8192 ]; then VM_MEM_MB=8192; fi
 if [ "$VM_MEM_MB" -lt 4096 ]; then VM_MEM_MB=4096; fi
 
 # ==========================================
-# 🎯 ГЕНЕРАЦИЯ МАСОК ЯДЕР
+# 🎯 ГЕНЕРАЦИЯ МАСОК (Для изоляции хоста)
 # ==========================================
-RUN_PREFIX=""
-PIN_MASK=""
 HOST_CPUS_MASK=""
 ALL_CPUS_MASK="0-$((TOTAL_CORES - 1))"
 
-if command -v taskset &> /dev/null && command -v seq &> /dev/null; then
-    # VM: Верхние ядра
+# чтобы знать, куда "отселить" системные процессы.
+if command -v seq &> /dev/null; then
+    # VM: Верхние ядра (информационно)
     START_CORE=$((TOTAL_CORES - VM_CORES))
     END_CORE=$((TOTAL_CORES - 1))
-    PIN_MASK=$(seq -s, $START_CORE $END_CORE 2>/dev/null)
 
-    # HOST: Нижние ядра
+    # HOST: Нижние ядра (для systemd изоляции)
     HOST_END_CORE=$((START_CORE - 1))
     if [ "$HOST_END_CORE" -lt 0 ]; then HOST_END_CORE=0; fi
     HOST_CPUS_MASK="0-$HOST_END_CORE"
-
-    if [ -n "$PIN_MASK" ]; then
-        RUN_PREFIX="taskset -c $PIN_MASK"
-    fi
-else
-    echo "ℹ️  'taskset' не найден. Изоляция невозможна."
 fi
 
 echo "📊 Конфигурация:"
 echo "   ➡️ Host CPU (System Only): Ядра $HOST_CPUS_MASK"
-echo "   ➡️ VM CPU (Guest):         Ядра $START_CORE-$END_CORE"
+echo "   ➡️ VM CPU (Планируемые):   Ядра $START_CORE-$END_CORE"
 echo "   ➡️ VM RAM:                 $VM_MEM_MB MB"
 echo "---------------------------------------------------"
 
@@ -91,8 +83,7 @@ cleanup() {
     if [ "$CAN_SUDO" = true ]; then
         echo "🔙 Восстановление настроек CPU..."
 
-        # Восстанавливаем ТОЛЬКО то, что трогали (system и init)
-        # user.slice мы не трогаем, чтобы не ломать сессию
+        # Восстанавливаем system и init scope
         if [ -n "$ALL_CPUS_MASK" ]; then
              sudo systemctl set-property --runtime -- system.slice AllowedCPUs=$ALL_CPUS_MASK 2>/dev/null
              sudo systemctl set-property --runtime -- init.scope AllowedCPUs=$ALL_CPUS_MASK 2>/dev/null
@@ -124,10 +115,10 @@ if [ "$CAN_SUDO" = true ]; then
         echo "performance" | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor > /dev/null 2>&1 || true
     fi
 
-    # 2. ИЗОЛЯЦИЯ ЯДЕР (ИСПРАВЛЕНО)
+    # 2. ИЗОЛЯЦИЯ СИСТЕМНЫХ ПРОЦЕССОВ
     if [ -n "$HOST_CPUS_MASK" ]; then
         echo "🔒 Изолируем системные службы на ядрах: $HOST_CPUS_MASK..."
-        # ВАЖНО: Мы НЕ трогаем user.slice, иначе скрипт потеряет доступ к ядрам VM
+        # Ограничиваем системные слайсы, чтобы освободить верхние ядра для QEMU
         sudo systemctl set-property --runtime -- system.slice AllowedCPUs=$HOST_CPUS_MASK
         sudo systemctl set-property --runtime -- init.scope AllowedCPUs=$HOST_CPUS_MASK
     fi
@@ -141,12 +132,11 @@ fi
 # ==========================================
 # 🎮 ЗАПУСК QEMU
 # ==========================================
-echo "🚀 Запуск QEMU (через $RUN_PREFIX)..."
+echo "🚀 Запуск QEMU..."
 
-# Теперь это сработает, так как user.slice (где запущен скрипт) имеет доступ ко всем ядрам.
-# А taskset принудительно посадит QEMU на нужные ядра.
+# но так как host-процессы зажаты в нижних ядрах, QEMU займет свободные верхние.
 
-$RUN_PREFIX qemu-system-x86_64 \
+qemu-system-x86_64 \
   -enable-kvm \
   -machine q35,accel=kvm \
   -cpu host,kvm=on,kvm_pv_unhalt=on,topoext=on \
