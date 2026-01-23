@@ -5,108 +5,131 @@ DISK_FILE="local_working_disk.qcow2"
 DEFAULT_CORES=4
 DEFAULT_MEM_MB=4096
 
-echo "🚀 Подготовка к запуску High-Performance VM (Robust Edition)..."
+echo "🚀 Подготовка к запуску High-Performance VM (Fixed Isolation)..."
 
-# 1. Проверка прав sudo (не блокирующая)
+# 1. Проверка прав sudo
 CAN_SUDO=true
 if ! command -v sudo &> /dev/null || ! sudo -v 2>/dev/null; then
-    echo "⚠️  Нет прав sudo или sudo не установлен."
-    echo "    Оптимизации (CPU governor, сброс кэшей) будут пропущены."
+    echo "⚠️  Нет прав sudo. Изоляция будет пропущена."
     CAN_SUDO=false
 fi
 
 # ==========================================
-# 🧠 ДИНАМИЧЕСКИЙ РАСЧЕТ РЕСУРСОВ
+# 🧠 РАСЧЕТ РЕСУРСОВ
 # ==========================================
 
-# --- РАСЧЕТ CPU ---
 if command -v nproc &> /dev/null; then
     TOTAL_CORES=$(nproc)
 else
-    echo "⚠️  'nproc' не найден. Используем значение по умолчанию: $DEFAULT_CORES ядра."
     TOTAL_CORES=$DEFAULT_CORES
 fi
 
-# Правило: Максимум - 1 ядро
-VM_CORES=$((TOTAL_CORES - 1))
-
-# Правило: Минимально 4 ядра
-if [ "$VM_CORES" -lt 4 ]; then
-    VM_CORES=4
-fi
-# Если физически ядер меньше 4, берем сколько есть
-if [ "$VM_CORES" -gt "$TOTAL_CORES" ]; then
-    VM_CORES=$TOTAL_CORES
+# Оставляем хосту минимум 1 ядро (если ядер >=8, то 2)
+if [ "$TOTAL_CORES" -ge 8 ]; then
+    RESERVED_FOR_HOST=2
+else
+    RESERVED_FOR_HOST=1
 fi
 
+VM_CORES=$((TOTAL_CORES - RESERVED_FOR_HOST))
 
-# --- РАСЧЕТ RAM ---
+# Лимиты ядер
+if [ "$VM_CORES" -lt 4 ] && [ "$TOTAL_CORES" -gt 4 ]; then VM_CORES=4; fi
+if [ "$VM_CORES" -ge "$TOTAL_CORES" ]; then VM_CORES=$((TOTAL_CORES - 1)); fi
+
+# Лимиты RAM
 if [ -f /proc/meminfo ] && command -v awk &> /dev/null; then
     TOTAL_MEM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
     TOTAL_MEM_MB=$((TOTAL_MEM_KB / 1024))
 else
-    echo "⚠️  Не удалось определить RAM (/proc/meminfo или awk отсутствуют). Используем: $DEFAULT_MEM_MB MB."
-    TOTAL_MEM_MB=$((DEFAULT_MEM_MB + 3000)) # Чтобы логика ниже не сломалась, эмулируем запас
+    TOTAL_MEM_MB=$((DEFAULT_MEM_MB + 3000))
 fi
 
-# Правило: Выделять Максимум - 2.5GB (2560 MB)
-VM_MEM_MB=$((TOTAL_MEM_MB - 2560))
+VM_MEM_MB=$((TOTAL_MEM_MB - 2560)) # Запас хосту 2.5GB
+if [ "$VM_MEM_MB" -gt 8192 ]; then VM_MEM_MB=8192; fi
+if [ "$VM_MEM_MB" -lt 4096 ]; then VM_MEM_MB=4096; fi
 
-# Правило: Лимит 8 GB
-if [ "$VM_MEM_MB" -gt 8192 ]; then
-    VM_MEM_MB=8192
-fi
-
-# Правило: Минимально 4 GB
-if [ "$VM_MEM_MB" -lt 4096 ]; then
-    VM_MEM_MB=4096
-fi
-
-
-# --- РАСЧЕТ TASKSET (Привязка ядер) ---
+# ==========================================
+# 🎯 ГЕНЕРАЦИЯ МАСОК ЯДЕР
+# ==========================================
 RUN_PREFIX=""
 PIN_MASK=""
+HOST_CPUS_MASK=""
+ALL_CPUS_MASK="0-$((TOTAL_CORES - 1))"
 
 if command -v taskset &> /dev/null && command -v seq &> /dev/null; then
+    # VM: Верхние ядра
     START_CORE=$((TOTAL_CORES - VM_CORES))
-    # Защита от отрицательных чисел
-    if [ "$START_CORE" -lt 0 ]; then START_CORE=0; fi
-
     END_CORE=$((TOTAL_CORES - 1))
-
-    # Генерируем маску
     PIN_MASK=$(seq -s, $START_CORE $END_CORE 2>/dev/null)
+
+    # HOST: Нижние ядра
+    HOST_END_CORE=$((START_CORE - 1))
+    if [ "$HOST_END_CORE" -lt 0 ]; then HOST_END_CORE=0; fi
+    HOST_CPUS_MASK="0-$HOST_END_CORE"
 
     if [ -n "$PIN_MASK" ]; then
         RUN_PREFIX="taskset -c $PIN_MASK"
     fi
 else
-    echo "ℹ️  'taskset' или 'seq' не найдены. Запуск без привязки ядер."
+    echo "ℹ️  'taskset' не найден. Изоляция невозможна."
 fi
 
-echo "📊 Конфигурация VM:"
-echo "   ➡️ VM CPU: $VM_CORES (Host Total: $TOTAL_CORES)"
-echo "   ➡️ VM RAM: $VM_MEM_MB MB"
-if [ -n "$RUN_PREFIX" ]; then
-    echo "   ➡️ Pinning: ВКЛЮЧЕН ($PIN_MASK)"
-else
-    echo "   ➡️ Pinning: ВЫКЛЮЧЕН (Система сама распределит потоки)"
-fi
+echo "📊 Конфигурация:"
+echo "   ➡️ Host CPU (System Only): Ядра $HOST_CPUS_MASK"
+echo "   ➡️ VM CPU (Guest):         Ядра $START_CORE-$END_CORE"
+echo "   ➡️ VM RAM:                 $VM_MEM_MB MB"
 echo "---------------------------------------------------"
 
 # ==========================================
-# 🛠️ НАСТРОЙКА ХОСТА (Только если есть sudo)
+# 🛑 ФУНКЦИЯ ОЧИСТКИ
+# ==========================================
+cleanup() {
+    echo ""
+    echo "🛑 Завершение работы..."
+
+    if [ "$CAN_SUDO" = true ]; then
+        echo "🔙 Восстановление настроек CPU..."
+
+        # Восстанавливаем ТОЛЬКО то, что трогали (system и init)
+        # user.slice мы не трогаем, чтобы не ломать сессию
+        if [ -n "$ALL_CPUS_MASK" ]; then
+             sudo systemctl set-property --runtime -- system.slice AllowedCPUs=$ALL_CPUS_MASK 2>/dev/null
+             sudo systemctl set-property --runtime -- init.scope AllowedCPUs=$ALL_CPUS_MASK 2>/dev/null
+        fi
+
+        # Восстанавливаем Governor
+        if [ -w "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor" ]; then
+             echo "powersave" | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor > /dev/null 2>&1 || true
+        fi
+
+        if command -v powerprofilesctl &> /dev/null; then
+            powerprofilesctl set balanced 2>/dev/null || true
+        fi
+    fi
+    echo "✅ Система восстановлена."
+}
+trap cleanup EXIT
+
+# ==========================================
+# 🛠️ ИЗОЛЯЦИЯ ХОСТА
 # ==========================================
 
 if [ "$CAN_SUDO" = true ]; then
-    # 1. Power Profile
+    # 1. Performance Mode
     if command -v powerprofilesctl &> /dev/null; then
         powerprofilesctl set performance || true
     fi
-
-    # 2. CPU Governor
     if [ -d "/sys/devices/system/cpu/cpu0/cpufreq" ]; then
         echo "performance" | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor > /dev/null 2>&1 || true
+    fi
+
+    # 2. ИЗОЛЯЦИЯ ЯДЕР (ИСПРАВЛЕНО)
+    if [ -n "$HOST_CPUS_MASK" ]; then
+        echo "🔒 Изолируем системные службы на ядрах: $HOST_CPUS_MASK..."
+        # ВАЖНО: Мы НЕ трогаем user.slice, иначе скрипт потеряет доступ к ядрам VM
+        sudo systemctl set-property --runtime -- system.slice AllowedCPUs=$HOST_CPUS_MASK
+        sudo systemctl set-property --runtime -- init.scope AllowedCPUs=$HOST_CPUS_MASK
     fi
 
     # 3. Сброс кэшей
@@ -118,10 +141,10 @@ fi
 # ==========================================
 # 🎮 ЗАПУСК QEMU
 # ==========================================
-echo "🚀 Запуск QEMU..."
+echo "🚀 Запуск QEMU (через $RUN_PREFIX)..."
 
-# Используем $RUN_PREFIX перед командой qemu.
-# Если taskset нет, переменная пустая и команда выполнится напрямую.
+# Теперь это сработает, так как user.slice (где запущен скрипт) имеет доступ ко всем ядрам.
+# А taskset принудительно посадит QEMU на нужные ядра.
 
 $RUN_PREFIX qemu-system-x86_64 \
   -enable-kvm \
@@ -144,22 +167,4 @@ $RUN_PREFIX qemu-system-x86_64 \
   -device virtio-rng-pci \
   -name "HighPerfVM"
 
-# ==========================================
-# 🛑 ОЧИСТКА
-# ==========================================
-echo "🛑 VM выключена."
-
-if [ "$CAN_SUDO" = true ]; then
-    echo "🔙 Возвращаем настройки..."
-
-    if [ "$POWER_MANAGED_BY_DAEMON" = true ]; then
-        powerprofilesctl set balanced 2>/dev/null || true
-    else
-        # Возвращаем powersave только если мы управляли через sysfs
-        if [ -w "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor" ]; then
-             echo "powersave" | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor > /dev/null 2>&1 || true
-        fi
-    fi
-fi
-
-echo "✅ Готово."
+# Скрипт ждет закрытия QEMU, затем сработает cleanup
