@@ -115,12 +115,26 @@
         # Это заменяет commandLineArgs из модуля Home Manager.
         configuredChromium = pkgs.chromium.override {
           commandLineArgs = [
+            # Отключение работы в фоновом режиме
+            "--disable-background-mode"
+            "--disable-background-networking"
+
+            # Отключение аппаратного ускорения (как просили ранее)
+            "--disable-gpu"
+            "--disable-software-rasterizer"
+            "--disable-gpu-rasterization"
+            "--disable-accelerated-video-decode"
+
+            # Отключение кодеков VP9 и AV1
+            "--disable-features=Av1Decoder,Vp9VideoDecoder"
+
+            "--enable-smooth-scrolling"
+            "--password-store=basic"
+            "--load-extension=/etc/chrome-extension"
+
             "--ozone-platform=wayland"
             "--enable-features=UseOzonePlatform,WaylandWindowDecorations,WebRTCPipeWireCapturer"
-            "--enable-gpu-rasterization"
             "--enable-zero-copy"
-            "--ignore-gpu-blocklist"
-            "--enable-smooth-scrolling"
             "--password-store=basic"
             "--load-extension=/etc/chrome-extension"
           ];
