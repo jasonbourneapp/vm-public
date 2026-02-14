@@ -1,3 +1,4 @@
 dump
 result*
 *.qcow2
+node_modules

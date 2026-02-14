@@ -1,110 +1,166 @@
-(function() {
-    console.log("Начинаю создание слепка...");
+(async function() {
+    try {
+        console.log("Запуск сверхглубокого запекания (LeetCode/Yandex Edition)...");
+        const baseUrl = window.location.href;
+        const toAbsolute = (url) => {
+            if (!url || /^(data:|http|https|\/\/)/.test(url)) return url;
+            try { return new URL(url, baseUrl).href; } catch(e) { return url; }
+        };
 
-    const docClone = document.documentElement.cloneNode(true);
-
-    // 1. Удаляем скрипты, iframe и link preload
-    const scripts = docClone.querySelectorAll('script, iframe, noscript, link[rel="modulepreload"]');
-    scripts.forEach(el => el.remove());
-
-    // 2. Чистим события и инлайновые стили запрета выделения
-    const allElements = docClone.querySelectorAll('*');
-    allElements.forEach(el => {
-        const attrs = el.attributes;
-        for (let i = attrs.length - 1; i >= 0; i--) {
-            if (attrs[i].name.startsWith('on')) {
-                el.removeAttribute(attrs[i].name);
-            }
+        // 1. Сбор ВСЕХ стилей, включая Adopted StyleSheets (используются в LeetCode/Monaco)
+        function getStylesFromRoot(root) {
+            let css = "";
+            // Обычные стили
+            try {
+                const sheets = root.styleSheets || [];
+                for (let i = 0; i < sheets.length; i++) {
+                    const sheet = sheets[i];
+                    try {
+                        const rules = sheet.cssRules || sheet.rules;
+                        for (let j = 0; j < rules.length; j++) css += rules[j].cssText + "\n";
+                    } catch (e) {}
+                }
+            } catch (e) {}
+            // Adopted StyleSheets (современный стандарт для Shadow DOM)
+            try {
+                if (root.adoptedStyleSheets) {
+                    root.adoptedStyleSheets.forEach(sheet => {
+                        try {
+                            const rules = sheet.cssRules || [];
+                            for (let i = 0; i < rules.length; i++) css += rules[i].cssText + "\n";
+                        } catch (e) {}
+                    });
+                }
+            } catch (e) {}
+            return css;
         }
-        // Убираем user-select: none из инлайн стилей
-        if (el.style.userSelect === 'none') el.style.userSelect = 'text';
-        if (el.style.webkitUserSelect === 'none') el.style.webkitUserSelect = 'text';
-    });
 
-    // 3. Отключаем ссылки (превращаем в текст)
-    const links = docClone.querySelectorAll('a');
-    links.forEach(a => {
-        a.removeAttribute('href');
-        a.removeAttribute('target');
-        a.removeAttribute('onclick');
-        a.style.cursor = 'text';
-    });
+        const globalDynamicStyles = getStylesFromRoot(document);
 
-    // 4. Абсолютные пути
-    const baseUrl = window.location.href;
-    function toAbsolute(path) {
-        if (!path) return path;
-        if (path.startsWith('http') || path.startsWith('//') || path.startsWith('data:')) return path;
-        try {
-            return new URL(path, baseUrl).href;
-        } catch (e) { return path; }
-    }
-    docClone.querySelectorAll('[src], [href]').forEach(el => {
-        if (el.hasAttribute('src')) el.setAttribute('src', toAbsolute(el.getAttribute('src')));
-        if (el.hasAttribute('href')) el.setAttribute('href', toAbsolute(el.getAttribute('href')));
-    });
+        // 2. Рекурсивный обход с «распаковкой» Shadow DOM
+        function bake(node) {
+            if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.nodeValue);
+            if (node.nodeType === Node.COMMENT_NODE) return null; // Убираем комментарии
+            if (node.nodeType !== Node.ELEMENT_NODE) return null;
 
-    // 5. Сохраняем данные форм (Inputs)
-    const originalInputs = document.querySelectorAll('input, textarea, select');
-    const clonedInputs = docClone.querySelectorAll('input, textarea, select');
-    originalInputs.forEach((orig, i) => {
-        if (clonedInputs[i]) {
-            if (orig.tagName === 'INPUT' && (orig.type === 'checkbox' || orig.type === 'radio')) {
-                if (orig.checked) clonedInputs[i].setAttribute('checked', '');
-            } else if (orig.tagName === 'SELECT') {
-                 const options = clonedInputs[i].querySelectorAll('option');
-                 if (options[orig.selectedIndex]) options[orig.selectedIndex].setAttribute('selected', '');
+            const tag = node.tagName.toUpperCase();
+            if (['SCRIPT', 'NOSCRIPT', 'IFRAME', 'OBJECT', 'EMBED', 'META'].includes(tag)) {
+                if (tag === 'META' && (node.getAttribute('http-equiv') || '').toLowerCase().includes('policy')) return null;
+                if (tag !== 'META') return null;
+            }
+
+            let clone;
+            if (tag === 'CANVAS') {
+                clone = document.createElement('img');
+                try { clone.src = node.toDataURL(); } catch(e) { clone = document.createElement('div'); }
             } else {
-                clonedInputs[i].setAttribute('value', orig.value);
-                if (orig.tagName === 'TEXTAREA') clonedInputs[i].innerHTML = orig.value;
+                clone = document.createElement(tag);
             }
+
+            // Копируем атрибуты и исправляем пути
+            for (let i = 0; i < node.attributes.length; i++) {
+                const attr = node.attributes[i];
+                if (attr.name.startsWith('on')) continue;
+                let val = attr.value;
+                if (['src', 'href', 'poster', 'data'].includes(attr.name)) val = toAbsolute(val);
+                if (attr.name === 'srcset') {
+                    val = val.split(',').map(s => {
+                        const parts = s.trim().split(' ');
+                        parts[0] = toAbsolute(parts[0]);
+                        return parts.join(' ');
+                    }).join(', ');
+                }
+                if (attr.name === 'style') {
+                    val = val.replace(/url\(['"]?(.*?)['"]?\)/g, (m, p1) => `url("${toAbsolute(p1)}")`);
+                }
+                clone.setAttribute(attr.name, val);
+            }
+
+            // Если это ссылка — убираем href, но оставляем стиль
+            if (tag === 'A') {
+                clone.removeAttribute('href');
+                clone.style.cursor = 'text';
+            }
+
+            // РАСПАКОВКА SHADOW DOM
+            if (node.shadowRoot) {
+                const shadowContent = document.createElement('div');
+                shadowContent.setAttribute('data-shadow-host', tag);
+                shadowContent.style.display = 'contents';
+                
+                // Добавляем стили из Shadow DOM прямо внутрь
+                const shadowStyles = getStylesFromRoot(node.shadowRoot);
+                if (shadowStyles) {
+                    const st = document.createElement('style');
+                    st.innerHTML = shadowStyles.replace(/url\(['"]?(.*?)['"]?\)/g, (m, p1) => `url("${toAbsolute(p1)}")`);
+                    shadowContent.appendChild(st);
+                }
+
+                for (let i = 0; i < node.shadowRoot.childNodes.length; i++) {
+                    const b = bake(node.shadowRoot.childNodes[i]);
+                    if (b) shadowContent.appendChild(b);
+                }
+                clone.appendChild(shadowContent);
+            }
+
+            // Обычные дети
+            for (let i = 0; i < node.childNodes.length; i++) {
+                const b = bake(node.childNodes[i]);
+                if (b) clone.appendChild(b);
+            }
+
+            // Состояние форм
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+                if (node.type === 'checkbox' || node.type === 'radio') {
+                    if (node.checked) clone.setAttribute('checked', '');
+                } else {
+                    clone.setAttribute('value', node.value);
+                    if (tag === 'TEXTAREA') clone.textContent = node.value;
+                }
+                if (tag === 'SELECT') {
+                    for (let i = 0; i < node.options.length; i++) {
+                        if (node.options[i].selected && clone.options[i]) clone.options[i].setAttribute('selected', '');
+                    }
+                }
+            }
+
+            return clone;
         }
-    });
 
-    // 6. МОЩНЫЙ CSS FIX (Включая Ace Editor)
-    const styleFix = document.createElement('style');
-    styleFix.innerHTML = `
-        /* Глобально разрешаем выделение */
-        *, html, body {
-            -webkit-user-select: text !important;
-            -moz-user-select: text !important;
-            -ms-user-select: text !important;
-            user-select: text !important;
-        }
+        const bakedDoc = bake(document.documentElement);
+        
+        // Финальные стили для разблокировки всего
+        const finalStyle = document.createElement('style');
+        finalStyle.innerHTML = `
+            ${globalDynamicStyles.replace(/url\(['"]?(.*?)['"]?\)/g, (m, p1) => `url("${toAbsolute(p1)}")`)}
+            
+            *, html, body { 
+                -webkit-user-select: text !important; 
+                user-select: text !important; 
+                pointer-events: auto !important; 
+            }
+            a { cursor: text !important; text-decoration: none !important; }
 
-        /* Ссылки как обычный текст */
-        a {
-            cursor: text !important;
-            pointer-events: auto !important;
-        }
+            /* Ультимативный фикс для редакторов (Monaco / Ace) */
+            .monaco-editor, .ace_editor, .ace_scroller, .monaco-scrollable-element {
+                pointer-events: auto !important;
+                user-select: text !important;
+            }
+            /* Скрываем курсоры и лишние оверлеи, которые мешают кликать по тексту */
+            .cursor, .monaco-mouse-cursor-text, .ace_cursor-layer, .ace_marker-layer, .ace_scrollbar {
+                display: none !important;
+            }
+            /* Делаем слои с текстом видимыми */
+            .view-lines, .view-line, .ace_line, .ace_text-layer {
+                pointer-events: auto !important;
+                user-select: text !important;
+            }
+        `;
+        const head = bakedDoc.querySelector('head') || bakedDoc.insertBefore(document.createElement('head'), bakedDoc.firstChild);
+        head.appendChild(finalStyle);
 
-        /* --- ЛЕЧЕНИЕ ACE EDITOR (LeetCode и другие редакторы) --- */
-
-        /* 1. Делаем слои с текстом доступными для клика */
-        .ace_editor, .ace_scroller, .ace_content, .ace_layer, .ace_line, .ace_text-layer {
-            pointer-events: auto !important;
-            user-select: text !important;
-        }
-
-        /* 2. Убираем слои, которые лежат ПОВЕРХ текста (курсоры, активная строка, маркеры) */
-        .ace_cursor-layer,
-        .ace_marker-layer,
-        .ace_scrollbar,
-        .ace_gutter-active-line {
-            pointer-events: none !important; /* Чтобы клики проходили сквозь них */
-            display: none !important; /* Или просто скрываем их, они не нужны в статике */
-        }
-
-        /* 3. Раскрываем скрытый текст, если он был спрятан */
-        .ace_text-input {
-            display: none !important; /* Скрываем скрытый input редактора */
-        }
-    `;
-    const head = docClone.querySelector('head') || docClone.appendChild(document.createElement('head'));
-    head.appendChild(styleFix);
-
-    console.log('%cГотово! Редакторы кода разблокированы.', 'color: green; font-weight: bold;');
-
-    // 7. Вместо скачивания файла, возвращаем строку HTML для отправки через WebSocket
-    return "<!DOCTYPE html>\n" + docClone.outerHTML;
+        return "<!DOCTYPE html>\n" + bakedDoc.outerHTML;
+    } catch (e) {
+        return "Ошибка запекания: " + e.message;
+    }
 })();
